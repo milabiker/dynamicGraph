@@ -1,3 +1,12 @@
+// feautres 
+//  -- dać uzytkownikowi możliwość tworzenia templatów wygladu wykresu (Elycharts)
+// 	-- każda wartość powinna mieć swoją labelke, zastanwić sie jak je wyświetlać, uzytkownik powinien miec mozliwosc
+//		ustawienia ile labalek powinno byc w polu wykresu 
+		/*series = { 	seria_1 : [ {value : 10.1, label : '2000'}, 
+							 	{value : 10.5, label : '2001'}
+							 	{value : 10.9, label : '2002'}],
+					seria_2 : [	{value : 9.50, label : '2001'}]   
+				};*/
 
 // |SVGDynamicGraph |
 // ----- | svg |
@@ -29,7 +38,7 @@
 // ----- |_svgManager|
 (function($){
 $.fn.SVGDynamicGraph = function(width, height, settings){
-	alert(calculateElementRelativeSize(100,100, 0.8,1.0,[0.1,0.2,0.1,0.2]));
+	//alert(calculateElementRelativeSize(100,100, 0.8,1.0,[0.1,0.2,0.1,0.2]));
 	$(this).svg({settings : { width: width, height : height}});
 	svg = $(this).svg('get');
 	//svg.container(svg);
@@ -44,9 +53,11 @@ $.fn.SVGDynamicGraph = function(width, height, settings){
 
 function GraphManager(SVG){
 	this.svgManager = SVG;
-	this.isLegend = false;
-	this.isTitle = false;
-	this._series = {};
+	//------- set up legend or title visible (temporary) ---------------------
+	this.isLegend = true;
+	this.isTitle = true;
+	//-----------------
+	this._series = [];
 	this.regions = {
 		'legend':{ x : { fromX: 0.0, toX: 0.2}, y : { fromY: 0.0, toY: 1.0 } },
 		'title': { x : { fromX: 0.2, toX: 1.0}, y : { fromY: 0.0, toY: 0.1 } },
@@ -77,8 +88,11 @@ $.extend(GraphManager.prototype,{
 		var line2 = this.svgManager.line(gridlines, 0,0,0,100,{strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1});
 
 		var marker = this.svgManager.marker( defs, 'circles', 8, 8, 15, 15, 'auto',{ markerUnits:"strokeWidth"});
-		var markerCircle = this.svgManager.circle(marker, 8,8,2, {fill:"none", stroke:'red', strokeWidth:'1'});
+		var markerCircle = this.svgManager.circle(marker, 8,8,2, {fill:"white", stroke:'red', strokeWidth:'1'});
 
+	},	
+	addSeries : function(valuesArray){
+		// this._series.
 	}
 });
 
@@ -105,6 +119,12 @@ function GraphArea(GraphManager){
 													 (GraphManager.isLegend == true ? GraphManager._getRegionWidthRatio('graph') : 0), 
 													 (GraphManager.isTitle == true ? GraphManager._getRegionHeightRatio('graph') : 0),
 													[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
+	this._chartSVGSize2 = calculateElementRelativeSize(svg._width(),
+													this.svgManager._height(), 
+													 (GraphManager.isLegend == true ? GraphManager._getRegionWidthRatio('graph') : 0), 
+													 (GraphManager.isTitle == true ? GraphManager._getRegionHeightRatio('graph') : 0),
+													[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
+
 	//alert(this._chartSVGSize); 	
 	this._chartSVG = this.svgManager.svg(this._group,
 										this.svgManager._width()*this.paddingLeft,
@@ -119,9 +139,7 @@ function GraphArea(GraphManager){
 	
 	this.path = svg.createPath();
 	//svg.path(this._graphAreaGroup, this.path.line(250,100), {fill: 'none',stroke: 'red', markerMid: 'url(#circles)'});
-	var path2 = svg.path(this._graphAreaGroup, this.path.move(0,0).line(20,250).line(40,200).line(60,220).line(80,240).line(100,220), {fill: 'none',stroke: 'red', strokeWidth: 2});
-	alert(this.path);
-	alert(this.path.line(320,150).path());
+	var path2 = svg.path(this._graphAreaGroup, this.path.move(0,0).line(20,250).line(40,200).line(60,220).line(80,240).line(100,220), {fill: 'none',stroke: 'red', strokeWidth: 2, markerMid: 'url(#circles)'});
 	svg.change(path2, {d: this.path.line(340,180).path()});
 
 //	this.svgManager.rect(this._group,0,0,40,50, {fill:'yellow'});
@@ -138,12 +156,15 @@ $.extend(GraphArea.prototype,{
 	},
 	_moveArea: function(obj){
 		//var attr = obj.polyline.getAttribute('transform');
-		obj.offset -= 10;
-		obj.path.line(340+(obj.offset*(-1)),(Math.random()*obj._chartSVGSize[1])*0.5);
+		for (var i=0;i<5;i++){
+			obj.offset -= 20;
+			obj.path.line(340+(obj.offset*(-1)),(Math.random()*obj._chartSVGSize[1])*0.5);
+		}
 		svg.change(obj.pathElement,{d:  obj.path.path()} );
 //		$(linia).animate( {svgTransform: 'translate('+obj.offset+',0)'},0);
 
-		$('#graphArea').animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 100);
+		$('#graphArea').animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 10*100);
+		
 		// --------------- moving gridlines ---------------
 		var bg = $('#gridLines').get(0);
 		var matrix = [obj.offset,0,0,0,obj.offset,100];
@@ -151,11 +172,10 @@ $.extend(GraphArea.prototype,{
 		var translate = [obj.offset,0];
 		translate = 'translate(' + translate + ')';
 	    //bg.setAttribute('patternTransform', matrix);
+	    // $('#gridLines').animate( {svgTransform: 'patternTransform(' +translate + ')'}, 10*100);
 	    bg.setAttribute('patternTransform', translate);
-	},
-	addSeries : function(obj){
-		GraphManager.series = obj;
 	}
+
 });
 
 //=======================================================================================================================
@@ -168,9 +188,10 @@ function TitleArea(GraphManager){
 														+ ', '+
 														calculteRelativeValue(GraphManager.regions['title'].y.fromY, this.svgManager._height())+')',
 														class: "title", 
-														fill: 'red'});
+														fill: 'red',stroke: 'none'});
 	var size = calculateElementRelativeSize(this.svgManager._width(), this.svgManager._height(), GraphManager._getRegionWidthRatio('title'), GraphManager._getRegionHeightRatio('title')); 
 	svg.rect(this._group,0,0,size[0],size[1]);
+	svg.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 	
 };
 $.extend(TitleArea.prototype,{
 
@@ -185,6 +206,7 @@ function LegendArea(GraphManager){
 														calculteRelativeValue(GraphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
 														fill: 'blue'});
 	svg.rect(this._group,0,0,this.svgManager._width()*GraphManager._getRegionWidthRatio('legend'),this.svgManager._height()*GraphManager._getRegionHeightRatio('legend'));
+	svg.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
 }
 
 //===============================================================================================================
