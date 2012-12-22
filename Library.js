@@ -59,8 +59,6 @@ function draw(svg){
 }*/
 $(function(){
 	var svg = $('div#svg1').SVGDynamicGraph(600,400);	
-	var manager = GraphManager(svg);
-	alert(manager);
 });
 function calc(number, whichDim, svg){
 	xDim = svg._svg.getAttribute('width');
