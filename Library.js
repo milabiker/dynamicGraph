@@ -58,7 +58,7 @@ function draw(svg){
 	
 }*/
 $(function(){
-	var svg = $('div#svg1').SVGDynamicGraph(600,400,true,true);	
+	var svg = $('div#svg1').SVGDynamicGraph(600,400);	
 	var manager = GraphManager(svg);
 	alert(manager);
 });
