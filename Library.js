@@ -1,3 +1,8 @@
+$(function(){
+	var svg = $('div#svg1').SVGDynamicGraph(600,400);	
+	var svg2 = $('div#svg').SVGDynamicGraph(400,200).addSeries({seriapierwsza : [12,12,13], seriadruga : [12,12,13]});
+});
+
 /*$(function() {
 	$("div#svg").svg({onLoad: draw , settings: {width:400, height:500}});
 	//$("div#svg1").svg();
@@ -57,10 +62,8 @@ function draw(svg){
         gridlines({stroke: 'gray', strokeDashArray: '2,2'}, 'gray').type('line', {explode: 2, explodeDist: 10}).redraw();
 	
 }*/
-$(function(){
-	var svg = $('div#svg1').SVGDynamicGraph(600,400);	
-});
-function calc(number, whichDim, svg){
+
+/*function calc(number, whichDim, svg){
 	xDim = svg._svg.getAttribute('width');
 	yDim = svg._svg.getAttribute('height');	
 	if(whichDim == 'x'){
@@ -74,4 +77,4 @@ function valuesToPx(values,areaWidth,areaHeight){
 	var min = Math.min(values);
 	
 	
-}
+}*/
