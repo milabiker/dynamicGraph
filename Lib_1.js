@@ -38,15 +38,15 @@
 // ----- |_svgManager|
 (function($){
 $.fn.SVGDynamicGraph = function(width, height, settings){
-	//alert(calculateElementRelativeSize(100,100, 0.8,1.0,[0.1,0.2,0.1,0.2]));
+	
 	$(this).svg({settings : { width: width, height : height}});
 	svg = $(this).svg('get');
-	//svg.container(svg);
+	
 //--------------- important!------------------
 // -------changed container from div to SVGElement -----------
 	svg._container = svg._svg;
-	GraphManager = new GraphManager(svg);
-	return svg;
+	this.graphManager = new GraphManager(svg);
+	return this.graphManager;
 };
 //===============================================================================================================
 //========================================== Graph Manager ======================================================
@@ -81,6 +81,9 @@ $.extend(GraphManager.prototype,{
 	_getRegionHeightRatio : function _getRegionHeightRatio(regionName){
 		return this.regions[regionName].y.toY - this.regions[regionName].y.fromY;
 	},
+	drawGraph: function(){
+		//$(this).svg({settings : { width: width, height : height}});
+	},
 	_defineDefs : function(){
 		var defs = this.svgManager.defs('myDefs1');
 		var gridlines = this.svgManager.pattern(defs, "gridLines", 0,0,200,100, 0,0,100,50, {patternUnits: 'userSpaceOnUse'});
@@ -92,6 +95,14 @@ $.extend(GraphManager.prototype,{
 
 	},	
 	addSeries : function(valuesArray){
+		if(typeof valuesArray == 'object'){
+			for( key in valuesArray){
+				if(valuesArray.hasOwnProperty(key)){
+					console.log("Klucz : " + key);
+				}
+			}
+//			this._series[]
+		}
 		// this._series.
 	}
 });
@@ -134,6 +145,7 @@ function GraphArea(GraphManager){
 	this._graphAreaGroup = this.svgManager.group(this._chartSVG, "graphArea", {class: 'graphArea'});
 //------------------------------------------------------------------------------------------------------
 // trail with animation
+
 	this._drawGridLines();
 	var polyline = svg.polyline(this._graphAreaGroup, [[0,300],[10,250],[30,100],[50,124],[70,190],[100,20],[130,170],[170,120],[200, 100],[220,140],[250,190],[300,250],[500,10]],{fill:"none", stroke:"red", strokeWidth:2, markerMid:"url(#circles)"});	
 	
@@ -171,9 +183,10 @@ $.extend(GraphArea.prototype,{
 		matrix = 'matrix(' + matrix + ')';
 		var translate = [obj.offset,0];
 		translate = 'translate(' + translate + ')';
-	    //bg.setAttribute('patternTransform', matrix);
+	    // bg.setAttribute('patternTransform', matrix);
 	    // $('#gridLines').animate( {svgTransform: 'patternTransform(' +translate + ')'}, 10*100);
 	    bg.setAttribute('patternTransform', translate);
+	   // $(bg).animate({width: translate},10*100);
 	}
 
 });
