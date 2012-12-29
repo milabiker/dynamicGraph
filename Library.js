@@ -1,6 +1,9 @@
 $(function(){
-	var svg = $('div#svg1').SVGDynamicGraph(600,400);	
-	var svg2 = $('div#svg').SVGDynamicGraph(400,200).addSeries({seriapierwsza : [12,12,13], seriadruga : [12,12,13]});
+	//var svg = $('div#svg1').SVGDynamicGraph(600,400);	
+	var svg2 = $('div#svg').SVGDynamicGraph(400,200).draw().addSeries({seriapierwsza : [12,12,13], seriadruga : [12,12,13]});
+	//var svgline = $('div#svgLineGraph').SVGDynamicGraph_1.LineGraph.initialize(200,200).show();
+	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',700,200).draw();
+
 });
 
 /*$(function() {

@@ -37,7 +37,17 @@
 // |LineGraph|
 // ----- |_svgManager|
 (function($){
-$.fn.SVGDynamicGraph = function(width, height, settings){
+	$.fn.SVGDynamicGraph_1 = function(chartId, width, height, settings){
+		var charttype = CHARTTYPES[chartId];
+		if(charttype){
+			console.log("LineGraph...");
+			this.graphManager = new GraphManager(this, width,height);
+			charttype.initialize(this.graphManager);
+			return this.graphManager;
+		}
+	};
+// ----- old version ------
+	$.fn.SVGDynamicGraph = function(width, height, settings){
 	
 	$(this).svg({settings : { width: width, height : height}});
 	svg = $(this).svg('get');
@@ -45,17 +55,20 @@ $.fn.SVGDynamicGraph = function(width, height, settings){
 //--------------- important!------------------
 // -------changed container from div to SVGElement -----------
 	svg._container = svg._svg;
-	this.graphManager = new GraphManager(svg);
+	this.graphManager = new GraphManager(this);
 	return this.graphManager;
 };
 //===============================================================================================================
 //========================================== Graph Manager ======================================================
 
-function GraphManager(SVG){
-	this.svgManager = SVG;
+function GraphManager(element, width, height){
+	$(element).svg({settings : { width: width, height : height}});
+	mysvg = $(element).svg('get');
+	mysvg._container = mysvg._svg;
+	this.svgManager = mysvg;
 	//------- set up legend or title visible (temporary) ---------------------
 	this.isLegend = true;
-	this.isTitle = true;
+	this.isTitle = false;
 	//-----------------
 	this._series = [];
 	this.regions = {
@@ -72,7 +85,7 @@ function GraphManager(SVG){
 		this._lagendArea = new LegendArea(this);
 	}
 	this._graphArea = new GraphArea(this);
-	var line = new LineGraph(this);
+	
 }
 $.extend(GraphManager.prototype,{
 	_getRegionWidthRatio : function _getRegionWidthRatio(regionName){
@@ -81,8 +94,16 @@ $.extend(GraphManager.prototype,{
 	_getRegionHeightRatio : function _getRegionHeightRatio(regionName){
 		return this.regions[regionName].y.toY - this.regions[regionName].y.fromY;
 	},
-	drawGraph: function(){
-		//$(this).svg({settings : { width: width, height : height}});
+	draw: function(){
+		if(this.isTitle){
+			this._titleArea._draw();
+		}
+		if(this.isLegend){
+			this._lagendArea._draw();
+		}
+		this._graphArea._draw();
+//		returning this to be able to use it after other SVGDynamicGraph function 		
+		return this;
 	},
 	_defineDefs : function(){
 		var defs = this.svgManager.defs('myDefs1');
@@ -101,9 +122,9 @@ $.extend(GraphManager.prototype,{
 					console.log("Klucz : " + key);
 				}
 			}
-//			this._series[]
 		}
-		// this._series.
+//		returning this to be able to use it after other SVGDynamicGraph function 
+		return this;
 	}
 });
 
@@ -111,61 +132,64 @@ $.extend(GraphManager.prototype,{
 //=============================================== Graph Area =======================================================
 function GraphArea(GraphManager){
 	this.svgManager = GraphManager.svgManager;
+	this.GraphManager = GraphManager;
 	this.padding = 0.1;
 	this.paddingLeft=0.05;
 	this.paddingRight = 0.01;
 	this.paddingBottom = 0.15;
-	this._group = this.svgManager.group("graphRegion", {class: "group1", transform: 'scale(1,1)'});
-	
-	// --- changing group position if legend or title are shown
-	this.svgManager.change(this._group, {transform:'scale(1,1) translate('+ 
-					(GraphManager.isLegend == true ? calculteRelativeValue(GraphManager.regions.graph.x.fromX,this.svgManager._width()) : 0) 
-					+','+ 
-					(GraphManager.isTitle == true ? calculteRelativeValue(GraphManager.regions.graph.y.fromY,this.svgManager._height()) : 0) 
-					+')'});
-
-	// [width,height]
-	this._chartSVGSize = calculateElementRelativeSize(this.svgManager._width(),
-													this.svgManager._height(), 
-													 (GraphManager.isLegend == true ? GraphManager._getRegionWidthRatio('graph') : 0), 
-													 (GraphManager.isTitle == true ? GraphManager._getRegionHeightRatio('graph') : 0),
-													[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
-	this._chartSVGSize2 = calculateElementRelativeSize(svg._width(),
-													this.svgManager._height(), 
-													 (GraphManager.isLegend == true ? GraphManager._getRegionWidthRatio('graph') : 0), 
-													 (GraphManager.isTitle == true ? GraphManager._getRegionHeightRatio('graph') : 0),
-													[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
-
-	//alert(this._chartSVGSize); 	
-	this._chartSVG = this.svgManager.svg(this._group,
-										this.svgManager._width()*this.paddingLeft,
-										0, 
-										this._chartSVGSize[0],
-										this._chartSVGSize[1]);
-	this._graphAreaGroup = this.svgManager.group(this._chartSVG, "graphArea", {class: 'graphArea'});
-//------------------------------------------------------------------------------------------------------
-// trail with animation
-
-	this._drawGridLines();
-	var polyline = svg.polyline(this._graphAreaGroup, [[0,300],[10,250],[30,100],[50,124],[70,190],[100,20],[130,170],[170,120],[200, 100],[220,140],[250,190],[300,250],[500,10]],{fill:"none", stroke:"red", strokeWidth:2, markerMid:"url(#circles)"});	
-	
-	this.path = svg.createPath();
-	//svg.path(this._graphAreaGroup, this.path.line(250,100), {fill: 'none',stroke: 'red', markerMid: 'url(#circles)'});
-	var path2 = svg.path(this._graphAreaGroup, this.path.move(0,0).line(20,250).line(40,200).line(60,220).line(80,240).line(100,220), {fill: 'none',stroke: 'red', strokeWidth: 2, markerMid: 'url(#circles)'});
-	svg.change(path2, {d: this.path.line(340,180).path()});
-
-//	this.svgManager.rect(this._group,0,0,40,50, {fill:'yellow'});
-
-	var liczba = 0;
-	//self.setInterval(this._moveArea,1000,{polyline : polyline, offset : liczba, svgManager : this.svgManager});
-	self.setInterval(this._moveArea,3000,{path : this.path, pathElement: path2, offset : liczba, svgManager : this.svgManager, _chartSVGSize : this._chartSVGSize});
-
 };
 $.extend(GraphArea.prototype,{
+	_draw: function(){
+		this._group = this.svgManager.group("graphRegion", {class: "group1", transform: 'scale(1,1)'});
+	
+		// --- changing group position if legend or title are shown
+		this.svgManager.change(this._group, {transform:'scale(1,1) translate('+ 
+						(this.GraphManager.isLegend == true ? calculteRelativeValue(this.GraphManager.regions.graph.x.fromX,this.svgManager._width()) : 0) 
+						+','+ 
+						(this.GraphManager.isTitle == true ? calculteRelativeValue(this.GraphManager.regions.graph.y.fromY,this.svgManager._height()) : 0) 
+						+')'});
+
+		// [width,height]
+		this._chartSVGSize = calculateElementRelativeSize(this.svgManager._width(),
+														this.svgManager._height(), 
+														 (this.GraphManager.isLegend == true ? this.GraphManager._getRegionWidthRatio('graph') : 0), 
+														 (this.GraphManager.isTitle == true ? this.GraphManager._getRegionHeightRatio('graph') : 0),
+														[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
+		this._chartSVGSize2 = calculateElementRelativeSize(svg._width(),
+														this.svgManager._height(), 
+														 (this.GraphManager.isLegend == true ? this.GraphManager._getRegionWidthRatio('graph') : 0), 
+														 (this.GraphManager.isTitle == true ? this.GraphManager._getRegionHeightRatio('graph') : 0),
+														[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
+
+		//alert(this._chartSVGSize); 	
+		this._chartSVG = this.svgManager.svg(this._group,
+											this.svgManager._width()*this.paddingLeft,
+											0, 
+											this._chartSVGSize[0],
+											this._chartSVGSize[1]);
+		this._graphAreaGroup = this.svgManager.group(this._chartSVG, "graphArea", {class: 'graphArea'});
+	//------------------------------------------------------------------------------------------------------
+	// trail with animation
+
+		this._drawGridLines();
+		var polyline = svg.polyline(this._graphAreaGroup, [[0,300],[10,250],[30,100],[50,124],[70,190],[100,20],[130,170],[170,120],[200, 100],[220,140],[250,190],[300,250],[500,10]],{fill:"none", stroke:"red", strokeWidth:2, markerMid:"url(#circles)"});	
+		
+		this.path = svg.createPath();
+		//svg.path(this._graphAreaGroup, this.path.line(250,100), {fill: 'none',stroke: 'red', markerMid: 'url(#circles)'});
+		var path2 = svg.path(this._graphAreaGroup, this.path.move(0,0).line(20,250).line(40,200).line(60,220).line(80,240).line(100,220), {fill: 'none',stroke: 'red', strokeWidth: 2, markerMid: 'url(#circles)'});
+		svg.change(path2, {d: this.path.line(340,180).path()});
+
+	//	this.svgManager.rect(this._group,0,0,40,50, {fill:'yellow'});
+
+		var liczba = 0;
+		//self.setInterval(this._moveArea,1000,{polyline : polyline, offset : liczba, svgManager : this.svgManager});
+		self.setInterval(this._moveArea,3000,{path : this.path, pathElement: path2, offset : liczba, svgManager : this.svgManager, _chartSVGSize : this._chartSVGSize});
+	},
 	_drawGridLines : function(){
 		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize[0],this._chartSVGSize[1],{id: "graphBackground",fill: 'none', fill: 'url(#gridLines)'});
 		
 	},
+	// - should be implemented in each graph type later!
 	_moveArea: function(obj){
 		//var attr = obj.polyline.getAttribute('transform');
 		for (var i=0;i<5;i++){
@@ -195,40 +219,48 @@ $.extend(GraphArea.prototype,{
 //-------------------------------------------------TITLE-----------------------------------------------------------------
 function TitleArea(GraphManager){
 	this.svgManager = GraphManager.svgManager;
-	this._group = this.svgManager.group("titleArea", 
-										{transform : 'translate(' + 
-														calculteRelativeValue(GraphManager.regions['title'].x.fromX, this.svgManager._width())
-														+ ', '+
-														calculteRelativeValue(GraphManager.regions['title'].y.fromY, this.svgManager._height())+')',
-														class: "title", 
-														fill: 'red',stroke: 'none'});
-	var size = calculateElementRelativeSize(this.svgManager._width(), this.svgManager._height(), GraphManager._getRegionWidthRatio('title'), GraphManager._getRegionHeightRatio('title')); 
-	svg.rect(this._group,0,0,size[0],size[1]);
-	svg.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 	
-};
+	this.GraphManager = GraphManager;
+	};
 $.extend(TitleArea.prototype,{
-
+	_draw : function(){
+		this._group = this.svgManager.group("titleArea", 
+											{transform : 'translate(' + 
+															calculteRelativeValue(this.GraphManager.regions['title'].x.fromX, this.svgManager._width())
+															+ ', '+
+															calculteRelativeValue(this.GraphManager.regions['title'].y.fromY, this.svgManager._height())+')',
+															class: "title", 
+															fill: 'red',stroke: 'none'});
+		var size = calculateElementRelativeSize(this.svgManager._width(), this.svgManager._height(), this.GraphManager._getRegionWidthRatio('title'), this.GraphManager._getRegionHeightRatio('title')); 
+		svg.rect(this._group,0,0,size[0],size[1]);
+		svg.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 		
+	}
 });
 //=======================================================================================================================
 //----------------------------------------------- LEGEND ----------------------------------------------------------------
 function LegendArea(GraphManager){
 	this.svgManager = GraphManager.svgManager;
-	this._group = this.svgManager.group("legendArea", {transform : 'translate(' +
-														calculteRelativeValue(GraphManager.regions['legend'].x.fromX, this.svgManager._width())
-														+ ', '+
-														calculteRelativeValue(GraphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
-														fill: 'blue'});
-	svg.rect(this._group,0,0,this.svgManager._width()*GraphManager._getRegionWidthRatio('legend'),this.svgManager._height()*GraphManager._getRegionHeightRatio('legend'));
-	svg.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
+	this.GraphManager = GraphManager;
 }
-
+$.extend(LegendArea.prototype,{
+	_draw: function(){
+		this._group = this.svgManager.group("legendArea", {transform : 'translate(' +
+														calculteRelativeValue(this.GraphManager.regions['legend'].x.fromX, this.svgManager._width())
+														+ ', '+
+														calculteRelativeValue(this.GraphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
+														fill: 'blue'});
+		svg.rect(this._group,0,0,this.svgManager._width()*this.GraphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.GraphManager._getRegionHeightRatio('legend'));
+		svg.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
+	}
+})
 //===============================================================================================================
 //------------------------------------------------ Line Graph --------------------------------------------------
-function LineGraph(graphManager){
-	this._graphManager = graphManager;
+function LineGraph(){
 };
 
 $.extend(LineGraph.prototype, {
+	initialize: function(graphManager){
+		this.graphManager = graphManager;
+	},
 	draw: function(){
 
 	},
@@ -286,6 +318,11 @@ function calculateElementRelativeSize(wrapperWidth, wrapperHeight, xRatio, yRati
 	}
 	return [relativeWidth, relativeHeight];
 }
+/**
+* Array of available charts
+*/
+var CHARTTYPES = [];
+CHARTTYPES['LineGraph'] = new LineGraph();
 })(jQuery);
 
 
