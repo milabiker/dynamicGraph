@@ -7,6 +7,27 @@
 							 	{value : 10.9, label : '2002'}],
 					seria_2 : [	{value : 9.50, label : '2001'}]   
 				};*/
+// -------------- settings -----------------
+//	#graphArea
+//		grid : true/false,
+//		horizontal_grid: true/false,
+//		vertical_grid: true/false,
+//		horizontal_labels:true,
+//		vertical_labels:true,
+//		labels_color: '#eee',
+//		horizontal_unit: '' (km/h),
+//		background_color: '#222',
+//		grid_color: 'blue',
+//		marker : 'false/circle/square',
+//		marker_size: 5,
+//		draw_axis: true,
+//		label_rotation: 0,
+//		label_size:10,
+//	#titleArea
+// 		title : 'title',
+// 		title_size : 5,
+// 		title_color : green,
+
 
 // |SVGDynamicGraph |
 // ----- | svg |
@@ -41,34 +62,25 @@
 		var charttype = CHARTTYPES[chartId];
 		if(charttype){
 			console.log("LineGraph...");
-			this.graphManager = new GraphManager(this, width,height);
+			this.graphManager = new GraphManager(this, charttype, width,height);
 			charttype.initialize(this.graphManager);
 			return this.graphManager;
+		}else{
+			console.error('SVGDynamincGraph: Wrong chart type');
 		}
 	};
-// ----- old version ------
-	$.fn.SVGDynamicGraph = function(width, height, settings){
-	
-	$(this).svg({settings : { width: width, height : height}});
-	svg = $(this).svg('get');
-	
-//--------------- important!------------------
-// -------changed container from div to SVGElement -----------
-	svg._container = svg._svg;
-	this.graphManager = new GraphManager(this);
-	return this.graphManager;
-};
 //===============================================================================================================
 //========================================== Graph Manager ======================================================
 
-function GraphManager(element, width, height){
+function GraphManager(element, charttype, width, height){
 	$(element).svg({settings : { width: width, height : height}});
 	mysvg = $(element).svg('get');
 	mysvg._container = mysvg._svg;
 	this.svgManager = mysvg;
+	this.charttype = charttype;
 	//------- set up legend or title visible (temporary) ---------------------
 	this.isLegend = true;
-	this.isTitle = false;
+	this.isTitle = true;
 	//-----------------
 	this._series = [];
 	this.regions = {
@@ -84,6 +96,8 @@ function GraphManager(element, width, height){
 	if(this.isLegend){
 		this._lagendArea = new LegendArea(this);
 	}
+	this._xAxis = new Axis(this);
+	this._yAxis = new Axis(this);
 	this._graphArea = new GraphArea(this);
 	
 }
@@ -102,7 +116,10 @@ $.extend(GraphManager.prototype,{
 			this._lagendArea._draw();
 		}
 		this._graphArea._draw();
-//		returning this to be able to use it after other SVGDynamicGraph function 		
+		/*======= invoke chart drawing ==========*/
+		this.charttype.draw(this._graphArea);
+
+		/* returning this to be able to use it after other SVGDynamicGraph function */		
 		return this;
 	},
 	_defineDefs : function(){
@@ -155,7 +172,7 @@ $.extend(GraphArea.prototype,{
 														 (this.GraphManager.isLegend == true ? this.GraphManager._getRegionWidthRatio('graph') : 0), 
 														 (this.GraphManager.isTitle == true ? this.GraphManager._getRegionHeightRatio('graph') : 0),
 														[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
-		this._chartSVGSize2 = calculateElementRelativeSize(svg._width(),
+		this._chartSVGSize2 = calculateElementRelativeSize(this.svgManager._width(),
 														this.svgManager._height(), 
 														 (this.GraphManager.isLegend == true ? this.GraphManager._getRegionWidthRatio('graph') : 0), 
 														 (this.GraphManager.isTitle == true ? this.GraphManager._getRegionHeightRatio('graph') : 0),
@@ -167,17 +184,20 @@ $.extend(GraphArea.prototype,{
 											0, 
 											this._chartSVGSize[0],
 											this._chartSVGSize[1]);
+
 		this._graphAreaGroup = this.svgManager.group(this._chartSVG, "graphArea", {class: 'graphArea'});
-	//------------------------------------------------------------------------------------------------------
+		this._drawGridLines();
+
+
+		//------------------------------------------------------------------------------------------------------
 	// trail with animation
 
-		this._drawGridLines();
-		var polyline = svg.polyline(this._graphAreaGroup, [[0,300],[10,250],[30,100],[50,124],[70,190],[100,20],[130,170],[170,120],[200, 100],[220,140],[250,190],[300,250],[500,10]],{fill:"none", stroke:"red", strokeWidth:2, markerMid:"url(#circles)"});	
+		var polyline = this.svgManager.polyline(this._graphAreaGroup, [[0,300],[10,250],[30,100],[50,124],[70,190],[100,20],[130,170],[170,120],[200, 100],[220,140],[250,190],[300,250],[500,10]],{fill:"none", stroke:"red", strokeWidth:2, markerMid:"url(#circles)"});	
 		
-		this.path = svg.createPath();
+		this.path = this.svgManager.createPath();
 		//svg.path(this._graphAreaGroup, this.path.line(250,100), {fill: 'none',stroke: 'red', markerMid: 'url(#circles)'});
-		var path2 = svg.path(this._graphAreaGroup, this.path.move(0,0).line(20,250).line(40,200).line(60,220).line(80,240).line(100,220), {fill: 'none',stroke: 'red', strokeWidth: 2, markerMid: 'url(#circles)'});
-		svg.change(path2, {d: this.path.line(340,180).path()});
+		var path2 = this.svgManager.path(this._graphAreaGroup, this.path.move(0,0).line(20,250).line(40,200).line(60,220).line(80,240).line(100,220), {fill: 'none',stroke: 'red', strokeWidth: 2, markerMid: 'url(#circles)'});
+		this.svgManager.change(path2, {d: this.path.line(340,180).path()});
 
 	//	this.svgManager.rect(this._group,0,0,40,50, {fill:'yellow'});
 
@@ -189,6 +209,10 @@ $.extend(GraphArea.prototype,{
 		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize[0],this._chartSVGSize[1],{id: "graphBackground",fill: 'none', fill: 'url(#gridLines)'});
 		
 	},
+	_drawAxis: function(axis,id, x1,y1,x2,y2){
+		this.svgManager.line(this._group, x1, y1, x2, y2, axis._lineSettings);
+	},
+
 	// - should be implemented in each graph type later!
 	_moveArea: function(obj){
 		//var attr = obj.polyline.getAttribute('transform');
@@ -196,7 +220,7 @@ $.extend(GraphArea.prototype,{
 			obj.offset -= 20;
 			obj.path.line(340+(obj.offset*(-1)),(Math.random()*obj._chartSVGSize[1])*0.5);
 		}
-		svg.change(obj.pathElement,{d:  obj.path.path()} );
+		obj.svgManager.change(obj.pathElement,{d:  obj.path.path()} );
 //		$(linia).animate( {svgTransform: 'translate('+obj.offset+',0)'},0);
 
 		$('#graphArea').animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 10*100);
@@ -231,8 +255,8 @@ $.extend(TitleArea.prototype,{
 															class: "title", 
 															fill: 'red',stroke: 'none'});
 		var size = calculateElementRelativeSize(this.svgManager._width(), this.svgManager._height(), this.GraphManager._getRegionWidthRatio('title'), this.GraphManager._getRegionHeightRatio('title')); 
-		svg.rect(this._group,0,0,size[0],size[1]);
-		svg.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 		
+		this.svgManager.rect(this._group,0,0,size[0],size[1]);
+		this.svgManager.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 		
 	}
 });
 //=======================================================================================================================
@@ -248,10 +272,55 @@ $.extend(LegendArea.prototype,{
 														+ ', '+
 														calculteRelativeValue(this.GraphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
 														fill: 'blue'});
-		svg.rect(this._group,0,0,this.svgManager._width()*this.GraphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.GraphManager._getRegionHeightRatio('legend'));
-		svg.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
+		this.svgManager.rect(this._group,0,0,this.svgManager._width()*this.GraphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.GraphManager._getRegionHeightRatio('legend'));
+		this.svgManager.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
 	}
-})
+});
+
+//=========================================================================================================================
+//----------------------------------------- AXIS -------------------------------------------
+function Axis(graphManager ){
+	this.svgManager = graphManager.svgManager;
+	this.GraphManager = graphManager;
+	this._lineSettings = {stroke:'green', strokeWidth:1};
+	this._minValue;
+	this._maxValue;
+	this._labels;
+	this._labelsSettings = {};
+	this._ticks;
+	this._title = '';
+	this._tittleSettings = {};
+}
+$.extend(Axis.prototype,{
+	title : function(title, settings){
+		if(arguments.length == 0){
+			return this._title;
+		}
+		this._title = title;
+		if(typeof settings == object){
+			this._tittleSettings = $.extend(this._tittleSettings, settings);
+		}
+	},
+	values : function(min, max){
+		if(arguments.length == 0){
+			return {min : this._minValue, max: this._maxValue};
+		}
+		this._maxValue = max;
+		this._minValue = min;
+	},
+	lables : function(labels, settings){
+		if(arguments.length == 0){
+			return this._labels
+		}
+		this._labels = labels;
+		this._labelsSettings = $.extend(this._labelsSettings , settings);
+	},
+	line: function(settings){
+		if(typeof settings == object){
+			this._lineSettings = $.extend(this._lineSettings, settings);
+		}
+	}
+});
 //===============================================================================================================
 //------------------------------------------------ Line Graph --------------------------------------------------
 function LineGraph(){
@@ -259,9 +328,14 @@ function LineGraph(){
 
 $.extend(LineGraph.prototype, {
 	initialize: function(graphManager){
-		this.graphManager = graphManager;
+		this.GraphManager = graphManager;
 	},
-	draw: function(){
+	draw: function(graphArea){
+		this.drawAxes(graphArea);
+	},
+	drawAxes: function(graphArea){
+		graphArea._drawAxis(this.GraphManager._xAxis,'xAxis', graphArea._chartSVG.getAttribute('x'), graphArea._chartSVGSize[1],parseInt(graphArea._chartSVGSize[0])+parseInt(graphArea._chartSVG.getAttribute('x')), graphArea._chartSVGSize[1]);
+		graphArea._drawAxis(this.GraphManager._xAxis,'yAxis', graphArea._chartSVG.getAttribute('x'), graphArea._chartSVG.getAttribute('y'),graphArea._chartSVG.getAttribute('x'), parseInt(graphArea._chartSVGSize[1])+parseInt(graphArea._chartSVG.getAttribute('y')));
 
 	},
 	addSeries: function(){
