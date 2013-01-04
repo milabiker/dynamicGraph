@@ -96,8 +96,8 @@ function GraphManager(element, charttype, width, height){
 	if(this.isLegend){
 		this._lagendArea = new LegendArea(this);
 	}
-	this._xAxis = new Axis(this);
-	this._yAxis = new Axis(this);
+	this._xAxis = new Axis(this,12);
+	this._yAxis = new Axis(this,5);
 	this._graphArea = new GraphArea(this);
 	
 }
@@ -151,9 +151,10 @@ function GraphArea(GraphManager){
 	this.svgManager = GraphManager.svgManager;
 	this.GraphManager = GraphManager;
 	this.padding = 0.1;
-	this.paddingLeft=0.05;
+	this.paddingLeft=0.1;
 	this.paddingRight = 0.01;
-	this.paddingBottom = 0.15;
+	this.paddingBottom = 0.1;
+	this.paddingTop = 0.01;
 };
 $.extend(GraphArea.prototype,{
 	_draw: function(){
@@ -172,16 +173,11 @@ $.extend(GraphArea.prototype,{
 														 (this.GraphManager.isLegend == true ? this.GraphManager._getRegionWidthRatio('graph') : 0), 
 														 (this.GraphManager.isTitle == true ? this.GraphManager._getRegionHeightRatio('graph') : 0),
 														[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
-		this._chartSVGSize2 = calculateElementRelativeSize(this.svgManager._width(),
-														this.svgManager._height(), 
-														 (this.GraphManager.isLegend == true ? this.GraphManager._getRegionWidthRatio('graph') : 0), 
-														 (this.GraphManager.isTitle == true ? this.GraphManager._getRegionHeightRatio('graph') : 0),
-														[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
-
+		
 		//alert(this._chartSVGSize); 	
 		this._chartSVG = this.svgManager.svg(this._group,
 											this.svgManager._width()*this.paddingLeft,
-											0, 
+											this.svgManager._width()*this.paddingTop, 
 											this._chartSVGSize[0],
 											this._chartSVGSize[1]);
 
@@ -210,7 +206,34 @@ $.extend(GraphArea.prototype,{
 		
 	},
 	_drawAxis: function(axis,id, x1,y1,x2,y2){
-		this.svgManager.line(this._group, x1, y1, x2, y2, axis._lineSettings);
+		var x1 = parseInt(x1);
+		var y1 = parseInt(y1);
+		var x2 = parseInt(x2);
+		var y2 = parseInt(y2);
+		
+		axis._line = this.svgManager.line(this._group, x1, y1, x2, y2, axis._lineSettings);
+		var len = 10;
+		if(x1 == x2 ){
+			console.log('Horizontal Axis');
+			var axisLength = y2 - y1;
+			var offset = Math.round(axisLength/axis._ticks);
+			var counter = 0;
+			while(counter < axis._ticks){
+				lineOffset = counter*offset;
+				this.svgManager.line(this._group, x1-len, y2 - lineOffset, x1, y2 - lineOffset);
+				counter++;
+			}
+		}else if( y1 == y2){			
+			var axisLength = x2 - x1;
+			var offset = Math.round(axisLength/axis._ticks);
+			var counter = 0;
+			while(counter < axis._ticks){
+				lineOffset = counter*offset;
+				this.svgManager.line(this._group, x1 + lineOffset, y1, x1 + lineOffset, y1+len, {strokeWidth: 1});
+				counter++;
+			}
+			
+		}
 	},
 
 	// - should be implemented in each graph type later!
@@ -279,15 +302,16 @@ $.extend(LegendArea.prototype,{
 
 //=========================================================================================================================
 //----------------------------------------- AXIS -------------------------------------------
-function Axis(graphManager ){
+function Axis(graphManager, ticks){
 	this.svgManager = graphManager.svgManager;
 	this.GraphManager = graphManager;
+	this._line;
 	this._lineSettings = {stroke:'green', strokeWidth:1};
 	this._minValue;
 	this._maxValue;
 	this._labels;
 	this._labelsSettings = {};
-	this._ticks;
+	this._ticks = ticks;
 	this._title = '';
 	this._tittleSettings = {};
 }
@@ -321,6 +345,43 @@ $.extend(Axis.prototype,{
 		}
 	}
 });
+function DataSeries(values, labels, name){
+	this._values = values || [];
+	this._labels = labels || [];
+	this._name = name || '';
+	this._dateOfLastUpdate; // Value which allows to get new values since last update
+}
+$.extend (Series.prototype, {
+	// values - array of new values
+	// extendValues - (boolean) if true extend current array, else override _values
+	values : function (values,extendValues){
+		if(arguments.length == 0){
+			return this._values;
+		}
+		if(extendValues){
+			$.extend(this._values, values);
+		}
+	}
+	labels : function(labels, extendLabels){
+		if(arguments.length == 0){
+			return this._labels;
+		}
+		if(extendLabels){
+			$.extend(this._labels, labels);
+		}	
+	}
+	name : function(name){
+		if(arguments.length == 0){
+			return this._name;
+		}
+		this._name = name ;
+	}
+	newValues : function(values, labels, dateOfLastUpdate){
+		this.values(values, true);
+		this.labels(labels,true);
+		this._dateOfLastUpdate = dateOfLastUpdate;
+	}
+});
 //===============================================================================================================
 //------------------------------------------------ Line Graph --------------------------------------------------
 function LineGraph(){
@@ -334,8 +395,16 @@ $.extend(LineGraph.prototype, {
 		this.drawAxes(graphArea);
 	},
 	drawAxes: function(graphArea){
-		graphArea._drawAxis(this.GraphManager._xAxis,'xAxis', graphArea._chartSVG.getAttribute('x'), graphArea._chartSVGSize[1],parseInt(graphArea._chartSVGSize[0])+parseInt(graphArea._chartSVG.getAttribute('x')), graphArea._chartSVGSize[1]);
-		graphArea._drawAxis(this.GraphManager._xAxis,'yAxis', graphArea._chartSVG.getAttribute('x'), graphArea._chartSVG.getAttribute('y'),graphArea._chartSVG.getAttribute('x'), parseInt(graphArea._chartSVGSize[1])+parseInt(graphArea._chartSVG.getAttribute('y')));
+		graphArea._drawAxis(this.GraphManager._xAxis,'xAxis', 
+							graphArea._chartSVG.getAttribute('x'), 
+							graphArea._chartSVGSize[1]+calculteRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
+							parseInt(graphArea._chartSVGSize[0])+parseInt(graphArea._chartSVG.getAttribute('x')), 
+							graphArea._chartSVGSize[1]+calculteRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
+		graphArea._drawAxis(this.GraphManager._yAxis,'yAxis', 
+							graphArea._chartSVG.getAttribute('x'), 
+							graphArea._chartSVG.getAttribute('y'),
+							graphArea._chartSVG.getAttribute('x'), 
+							parseInt(graphArea._chartSVGSize[1])+parseInt(graphArea._chartSVG.getAttribute('y')));
 
 	},
 	addSeries: function(){
