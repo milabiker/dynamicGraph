@@ -103,10 +103,11 @@ function GraphManager(element, charttype, width, height, settings){
 	this._series = [];
 	this._addSeries({ 	'seria_1' : { values : [1.1, 5.5, 11.8, 7.50], labels : ['2000','2001','2002','2003']}, 
 						'seria_2': { values : [9.50, 10.5, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}});
-	this._addSeries({ 	'seria_1' : { values : [10.1, 20.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
-						'seria_2': { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}});
-	this._addSeries({ 	'seria_1' : { values : [10.1, 20.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
-						'seria_2': { values : [9.50, 1, 5.2, 6.8,],    labels : ['2001','2002','2003','2004']}});
+	// this._addSeries({ 	'seria_1' : { values : [10.1, 20.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
+	// 					'seria_2': { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}});
+	this._addSeries({ 	'seria_4': { values : [2.50, 3, 4.2, 5.8,],    labels : ['2001','2002','2003','2004']},
+						'seria_3': { values : [9.50, 5, 6.2, 7.8,],    labels : ['2001','2002','2003','2004']}});
+
 	this._printSeries();
 	this._xAxis = new Axis(this,this.settings.ticks);
 	this._yAxis = new Axis(this,5);
@@ -162,33 +163,22 @@ $.extend(GraphManager.prototype,{
 	* @param DataSeries - object literal (JSON) with new values	
 	*/
 	_addSeries : function(dataSeries){
+
 		if(typeof dataSeries == 'object'){
 			console.log("array size compare : " + Object.size(dataSeries) + " > " + this._series.length);
-			// if length of DataSeries is larger than _series, we need to add new DataSeries, else we just update current series 
-			if(Object.size(dataSeries) > this._series.length){
-
-				console.log("_addSeries | adding new series");
-				for( key in dataSeries){
-					if(dataSeries.hasOwnProperty(key)){
-						// console.log("Klucz : " + key);
-						// console.log("Values : " + dataSeries[key].values);
-						// console.log("labels : " + dataSeries[key].labels);
+			var newValues = [];
+			for(key in dataSeries){
+				if(dataSeries.hasOwnProperty(key)){
+					if(!this.containSeries(key,this._series)){
+						console.log("Adding new series where key is : " + key);
 						this._series.push(new DataSeries(this, dataSeries[key].values, dataSeries[key].labels, key));
-					}
-				}
-			}else{
-
-				// TODO does't work
-				console.log("_addSeries | updating series");
-				for( key in dataSeries){
-					if(dataSeries.hasOwnProperty(key)){
+						newValues.push(dataSeries[key].values);
+					}else{
 						for(var i=0, l=this._series.length; i < l; i++){
-							// console.log("Klucz : " + key);
-							// console.log("Values : " + DataSeries[key].values);
-							// console.log("labels : " + DataSeries[key].labels);
 							if(this._series[i].name() == key){
 								console.log("Series " + key + "found");
 								this._series[i].update(dataSeries[key].values,dataSeries[key].labels);
+								newValues.push(dataSeries[key].values);
 							}else{
 								console.log("Series not found yet");
 							}
@@ -196,7 +186,49 @@ $.extend(GraphManager.prototype,{
 					}
 				}
 			}
+			return newValues;
 		}
+		// if(typeof dataSeries == 'object'){
+		// 	console.log("array size compare : " + Object.size(dataSeries) + " > " + this._series.length);
+		// 	var newValues = [];
+		// 	// if length of DataSeries is larger than _series, we need to add new DataSeries, else we just update current series 
+		// 	if(Object.size(dataSeries) > this._series.length){
+		// 		console.log("_addSeries | adding new series");
+		// 		for( key in dataSeries){
+		// 			if(dataSeries.hasOwnProperty(key)){
+		// 				if(!this.containSeries(key,this._series)){
+		// 					console.log("Adding new series where key is : " + key);
+		// 					this._series.push(new DataSeries(this, dataSeries[key].values, dataSeries[key].labels, key));
+		// 				}
+		// 				// console.log("Klucz : " + key);
+		// 				// console.log("Values : " + dataSeries[key].values);
+		// 				// console.log("labels : " + dataSeries[key].labels);
+
+		// 				//adding new values to array to return it from function
+		// 				newValues.push(dataSeries[key].values);
+		// 			}
+		// 		}
+		// 		return newValues;
+		// 	}else{
+
+		// 		// TODO does't work
+		// 		console.log("_addSeries | updating series");
+		// 		for( key in dataSeries){
+		// 			if(dataSeries.hasOwnProperty(key)){
+		// 				for(var i=0, l=this._series.length; i < l; i++){
+		// 					if(this._series[i].name() == key){
+		// 						console.log("Series " + key + "found");
+		// 						this._series[i].update(dataSeries[key].values,dataSeries[key].labels);
+		// 						newValues.push(dataSeries[key].values);
+		// 					}else{
+		// 						console.log("Series not found yet");
+		// 					}
+		// 				}
+		// 			}
+		// 		}
+		// 		return newValues;
+		// 	}
+		// }
 //		returning this to be able to use it after other SVGDynamicGraph function 
 		return this;
 	},
@@ -215,7 +247,18 @@ $.extend(GraphManager.prototype,{
 			console.log("\tLabels : " + this._series[i].labels());
 
 		}
+	},
+	containSeries : function(name, array) {
+	    var i = array.length;
+	    while (i--) {
+	        if (array[i].name() == name) {
+	            return true;
+	        }
+	        console.log(key + "not found");
+	    }
+    	return false;
 	}
+
 });
 
 //===============================================================================================================
@@ -302,18 +345,13 @@ $.extend(GraphArea.prototype,{
 
 //		== new random values ==
 		for (var i=0;i<5;i++){
-			obj.offset -= 20;
+			obj.offset -= obj.xScale;
 			obj.path.line(340+(obj.offset*(-1)),(Math.random()*obj._chartSVGSize[1])*0.5);
 		}
 		obj.graphArea.svgManager.change(obj.pathElement,{d:  obj.path.path()} );
 
-		// -- temporary solution
-		// obj.graphArea.graphManager._addSeries({ 	'seria_1' : { values : [10.1, 10.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
-		// 				'seria_2': { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}});
-		// obj.graphArea.graphManager.charttype.draw(obj.graphArea);
-
 		$('#graphArea').animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 10*100);
-		
+		// $('#graphArea').get(0).setAttribute('transform', 'translate(' + obj.offset +',0)');
 		// --------------- moving gridlines ---------------
 		var bg = $('#gridLines').get(0);
 		var matrix = [obj.offset,0,0,0,obj.offset,100];
@@ -418,6 +456,9 @@ function DataSeries(graphManager, values, labels, name){
 	this._labels = labels || [];
 	this._name = name || '';
 	this._dateOfLastUpdate; // Value which allows to get new values since last update
+
+	// holder for element which reprezents this series of data
+	this._element;
 }
 $.extend (DataSeries.prototype, {
 	// values - array of new values
@@ -448,6 +489,12 @@ $.extend (DataSeries.prototype, {
 		this.labels(labels,true);
 		this._dateOfLastUpdate = dateOfLastUpdate;
 		this
+	},
+	element : function(el){
+		if(arguments.length == 0){
+			return this._element;
+		}
+		this._element = el;
 	}
 });
 //===============================================================================================================
@@ -466,21 +513,21 @@ $.extend(LineGraph.prototype, {
 		console.log("yScale = " + yScale);
 		console.log("settings.ticks = " + this.graphManager.settings.ticks);
 
-/*		this.path = graphArea.svgManager.createPath();
-		var pathElement = graphArea.svgManager.path(graphArea._graphAreaGroup, this.path.move(,0).line(20,250).line(40,200).line(60,220).line(80,240).line(100,220), {fill: 'none',stroke: 'red', strokeWidth: 2, markerMid: 'url(#circles)'});
-		graphArea.svgManager.change(pathElement, {d: this.path.line(340,180).path()});
-*/
-		//var liczba = 0;
 		//self.setInterval(graphArea._moveArea,3000,{path : this.path, pathElement: path2, offset : liczba, svgManager : graphArea.svgManager, _chartSVGSize : graphArea._chartSVGSize});
 		this.drawSeries(graphArea,xScale,yScale);
 		this.drawAxes(graphArea);
 		graphArea._drawGridLines();
 	},
 	// instead of using this._series use only new values to attach it to series line
-	drawSeries : function(graphArea, xScale, yScale){
+	drawSeries : function(graphArea, xScale, yScale, newValues){
+		// instead of using this.graphManager._series use newValues
 		for(var i=0, l=this.graphManager._series.length; i<l; i++){
 			var values = this.graphManager._series[i].values();
-			var path = graphArea.svgManager.createPath();
+			
+			this.graphManager._series[i].element(graphArea.svgManager.createPath());
+			if(this.graphManager._series[i].element() == undefined){
+			}
+			var path = this.graphManager._series[i].element();		
 			var pathElement = graphArea.svgManager.path(graphArea._graphAreaGroup, path.move(0,graphArea._chartSVGSize[1] - values[0]*yScale),{fill: 'none',stroke: 'gray', strokeWidth: 2, markerMid: 'url(#circles)'});
 
 				//.line(20,250).line(40,200).line(60,220).line(80,240).line(100,220), {fill: 'none',stroke: 'red', strokeWidth: 2, markerMid: 'url(#circles)'});
@@ -491,7 +538,8 @@ $.extend(LineGraph.prototype, {
 				// console.log("#(" + j*xScale + " ," + values[j]*yScale);
 				graphArea.svgManager.change(pathElement, {d: path.line(x,y).path()});
 			}
-//			self.setInterval(graphArea._moveArea,3000,{path : path, pathElement: pathElement, offset : 0, graphArea : graphArea, _chartSVGSize : graphArea._chartSVGSize});
+
+			var interval_id = self.setInterval(graphArea._moveArea,5000,{path : path, pathElement: pathElement, offset : 0, xScale: xScale, graphArea : graphArea, _chartSVGSize : graphArea._chartSVGSize});
 		}
 	},
 	drawAxes: function(graphArea){
@@ -510,7 +558,12 @@ $.extend(LineGraph.prototype, {
 	addSeries: function(){
 
 	},
+	refreshGraph: function(){
+		var newValues = this.graphManager._addSeries({ 	'seria_1' : { values : [10.1, 20.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
+						'seria_2': { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}});
 
+		this.drawSeries
+	}
 });
 //-------------------------------------------------------------------------
 
