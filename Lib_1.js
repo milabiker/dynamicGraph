@@ -88,10 +88,13 @@ function GraphManager(element, charttype, width, height, settings){
 		label_rotation: 90,
 		label_size:10,
 		ticks : 10,
+		name: $(element).attr('id')
 	}
-
+	//===================
+	// attaching svg 
 	$(element).svg({settings : { width: width, height : height}});
 	mysvg = $(element).svg('get');
+	//===================
 	mysvg._container = mysvg._svg;
 	this.svgManager = mysvg;
 	this.charttype = charttype;
@@ -117,7 +120,7 @@ function GraphManager(element, charttype, width, height, settings){
 		'graph': { x : { fromX: 0.2, toX: 1.0}, y : { fromY: 0.1, toY: 1.0 } }
 		};
 	// defining defs , it must be at the begining of svg elements
-	this._defineDefs();
+	//this._defineDefs();
 	if(this.isTitle){
 		this._titleArea = new TitleArea(this);
 	}
@@ -149,7 +152,7 @@ $.extend(GraphManager.prototype,{
 		return this;
 	},
 	_defineDefs : function(){
-		var defs = this.svgManager.defs('myDefs1');
+		var defs = this.svgManager.defs(this.settings.name + '_defs');
 		var gridlines = this.svgManager.pattern(defs, "gridLines", 0,0,200,100, 0,0,100,50, {patternUnits: 'userSpaceOnUse'});
 		var line1 = this.svgManager.line(gridlines, 0,0,100,0,{strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1});
 		var line2 = this.svgManager.line(gridlines, 0,0,0,100,{strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1});
@@ -274,7 +277,7 @@ function GraphArea(graphManager){
 };
 $.extend(GraphArea.prototype,{
 	_draw: function(){
-		this._group = this.svgManager.group("graphRegion", {class: "group1", transform: 'scale(1,1)'});
+		this._group = this.svgManager.group(this.svgManager._wrapper, "graphRegion", {class: "group1", transform: 'scale(1,1)'});
 	
 		// --- changing group position if legend or title are shown
 		this.svgManager.change(this._group, {transform:'scale(1,1) translate('+ 
@@ -297,7 +300,7 @@ $.extend(GraphArea.prototype,{
 											this._chartSVGSize[0],
 											this._chartSVGSize[1]);
 
-		this._graphAreaGroup = this.svgManager.group(this._chartSVG, "graphArea", {class: 'graphArea'});
+		this._graphAreaGroup = this.svgManager.group(this._chartSVG, "graphArea", {class_: 'graphArea'});
 
 
 		//------------------------------------------------------------------------------------------------------
@@ -344,14 +347,14 @@ $.extend(GraphArea.prototype,{
 	_moveArea: function(obj){
 
 //		== new random values ==
-		for (var i=0;i<5;i++){
+		for (var i=0;i<1;i++){
 			obj.offset -= obj.xScale;
 			obj.path.line(340+(obj.offset*(-1)),(Math.random()*obj._chartSVGSize[1])*0.5);
 		}
 		obj.graphArea.svgManager.change(obj.pathElement,{d:  obj.path.path()} );
 
-		$('#graphArea').animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 10*100);
-		// $('#graphArea').get(0).setAttribute('transform', 'translate(' + obj.offset +',0)');
+		//$('#graphArea').animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 100);
+		 $('#graphArea').get(0).setAttribute('transform', 'translate(' + obj.offset +',0)');
 		// --------------- moving gridlines ---------------
 		var bg = $('#gridLines').get(0);
 		var matrix = [obj.offset,0,0,0,obj.offset,100];
@@ -514,9 +517,10 @@ $.extend(LineGraph.prototype, {
 		console.log("settings.ticks = " + this.graphManager.settings.ticks);
 
 		//self.setInterval(graphArea._moveArea,3000,{path : this.path, pathElement: path2, offset : liczba, svgManager : graphArea.svgManager, _chartSVGSize : graphArea._chartSVGSize});
+		graphArea._drawGridLines();
 		this.drawSeries(graphArea,xScale,yScale);
 		this.drawAxes(graphArea);
-		graphArea._drawGridLines();
+		this.graphManager._defineDefs();
 	},
 	// instead of using this._series use only new values to attach it to series line
 	drawSeries : function(graphArea, xScale, yScale, newValues){
@@ -539,7 +543,7 @@ $.extend(LineGraph.prototype, {
 				graphArea.svgManager.change(pathElement, {d: path.line(x,y).path()});
 			}
 
-			var interval_id = self.setInterval(graphArea._moveArea,5000,{path : path, pathElement: pathElement, offset : 0, xScale: xScale, graphArea : graphArea, _chartSVGSize : graphArea._chartSVGSize});
+			var interval_id = self.setInterval(graphArea._moveArea,2000,{path : path, pathElement: pathElement, offset : 0, xScale: xScale, graphArea : graphArea, _chartSVGSize : graphArea._chartSVGSize});
 		}
 	},
 	drawAxes: function(graphArea){
@@ -562,7 +566,7 @@ $.extend(LineGraph.prototype, {
 		var newValues = this.graphManager._addSeries({ 	'seria_1' : { values : [10.1, 20.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
 						'seria_2': { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}});
 
-		this.drawSeries
+		
 	}
 });
 //-------------------------------------------------------------------------
