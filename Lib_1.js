@@ -398,12 +398,7 @@ $.extend(GraphArea.prototype,{
 			obj.offset -= obj.xScale;
 			obj.path.line(obj.lastXpointposition+(obj.offset*(-1)),(Math.random()*obj._chartSVGSize[1])*0.5);
 		}
-		// for (var i=0;i<=0;i++){
-		// 	obj.offset -= obj.xScale;
-		// 	var sinvalue = Math.sin(obj.offset)*100;
-		// 	console.log("Sin value = " + sinvalue)
-		// 	obj.path.line(obj.lastXpointposition+(obj.offset*(-1)),sinvalue);
-		// }
+		
 		obj.graphArea.svgManager.change(obj.pathElement,{d:  obj.path.path()} );
 		// TODO change id to class
 		var objId = "."+obj.graphArea.graphManager.settings.name+'graphArea';
@@ -669,16 +664,16 @@ $.extend(LineGraph.prototype, {
 			var series = this.graphManager._getSeriesByName(key);
 			if(series != undefined){
 				var measurementsToDraw = series.getMeasurmentsToDraw(numberOfNewValuesToDrawInSeries[key]);
+				var seriesSvgElement = series.svgElement();
+				if(seriesSvgElement == undefined){
 
+					// TODO calculate the x position for new series if such appear
+					var element = { path : graphArea.svgManager.createPath(),
+									pathNode : graphArea.svgManager.path(graphArea._graphAreaGroup, path.move) };
+					series.svgElement(element);
+				}
 				for(var i=0, l = measurementsToDraw.length; i < l; i++){
-					var seriesSvgElement = series.svgElement();
-					if(seriesSvgElement == undefined){
 
-						// TODO calculate the x position for new series if such appear
-						var element = { path : graphArea.svgManager.createPath(),
-										pathNode : graphArea.svgManager.path(graphArea._graphAreaGroup, path.move) };
-						series.svgElement(element);
-					}
 				}
 			}
 
