@@ -14,6 +14,7 @@
 						seria_2 : { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}   
 					};*/
 
+		// ACTUAL format of data
 		// series = {
 		// 	"seria_1" : [
 		// 					{ value: 0.632, timestamp : 12:41 ( in milis)},
@@ -120,7 +121,7 @@ function GraphManager(element, charttype, width, height, settings){
 		draw_axis: true,
 		label_rotation: 90,
 		label_size:10,
-		ticks : 10,
+		ticks : 10, // TODO change to time (e.g from last 2h)
 		name: $(element).attr('id')
 	}
 	//===================
@@ -136,7 +137,7 @@ function GraphManager(element, charttype, width, height, settings){
 	this.isLegend = true;
 	this.isTitle = true;
 	//-----------------
-	this._series = [];
+	this._series = {};
 	// this._addSeries({ 	'seria_1' : { values :[2,0.5,0.2,0.6,0.7], labels : ['2000','2001','2002','2003']}, 
 						// 'seria_2': { values : [0,1,0,0.5,0.2,1],    labels : ['2001','2002','2003','2004']}});
 	// this._addSeries({ 	'seria_1' : { values : [10.1, 20.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
@@ -203,66 +204,47 @@ $.extend(GraphManager.prototype,{
 	* @param DataSeries - object literal (JSON) with new values	
 	*/
 	_addSeries : function(dataSeries){
-		var numberOfNewValuesToDraw = {};
+		
+		var numberOfNewValuesToDrawInSeries = {};
 		for( key in dataSeries){
 			if(dataSeries.hasOwnProperty(key)){
-				var values =[];
-				var labels = []; // timestamps
-				for(var i=0,l=dataSeries[key].length; i < l; i++){
-					console.log(dataSeries[key][i].value);
-					values.push(dataSeries[key][i].value);
-					labels.push(dataSeries[key][i].timestamp);
-				}
-				if(!this._containSeries(key,this._series)){
-					this._series.push(new DataSeries(this, values, labels, key));
-					
+				var series = this._getSeriesByName(key);
+
+				if(series != undefined){
+					series.update(dataSeries[key]);
 				}else{
-					for(var i=0, l=this._series.length; i < l; i++){
-							if(this._series[i].name() == key){
-								this._series[i].update(values,labels);
-							}
-					}
+					this._series.push(new DataSeries(dataSeries[key],name));
 				}
+				$.extend(numberOfNewValuesToDrawInSeries,{key : dataSeries[key].length});
 			}
-			$.extend(numberOfNewValuesToDraw, {key : dataSeries[key].length});
-			console.log("numberOfNewValues["+key+"] = " + numberOfNewValuesToDraw.key);
 		}
-		return numberOfNewValuesToDraw;
+		return numberOfNewValuesToDrawInSeries;
 
-		// if(typeof dataSeries == 'object'){
-
-		// 	//TODO remove in final version
-		// 	// console.log("array size compare : " + Object.size(dataSeries) + " > " + this._series.length);
-		// 	var newValues = [];
-		// 	for(key in dataSeries){
-		// 		if(dataSeries.hasOwnProperty(key)){
-		// 			if(!this._containSeries(key,this._series)){
-
-		// 				// TODO remove in final version
-		// 				// console.log("Adding new series where key is : " + key);
-		// 				this._series.push(new DataSeries(this, dataSeries[key].values, dataSeries[key].labels, key));
-		// 				newValues.push(dataSeries[key].values);
-		// 			}else{
-		// 				for(var i=0, l=this._series.length; i < l; i++){
+		// var numberOfNewValuesToDraw = {};
+		// for( key in dataSeries){
+		// 	if(dataSeries.hasOwnProperty(key)){
+		// 		var values =[];
+		// 		var labels = []; // timestamps
+		// 		for(var i=0,l=dataSeries[key].length; i < l; i++){
+		// 			console.log(dataSeries[key][i].value);
+		// 			values.push(dataSeries[key][i].value);
+		// 			labels.push(dataSeries[key][i].timestamp);
+		// 		}
+		// 		if(!this._containSeries(key,this._series)){
+		// 			this._series.push(new DataSeries(this, values, labels, key));
+					
+		// 		}else{
+		// 			for(var i=0, l=this._series.length; i < l; i++){
 		// 					if(this._series[i].name() == key){
-		// 						// TODO remove in final version
-		// 						// console.log("Series " + key + "found");
-		// 						this._series[i].update(dataSeries[key].values,dataSeries[key].labels);
-		// 						newValues.push(dataSeries[key].values);
-		// 					}else{
-
-		// 						// TODO remove in final version
-		// 						// console.log("Series not found yet");
+		// 						this._series[i].update(values,labels);
 		// 					}
-		// 				}
 		// 			}
 		// 		}
 		// 	}
-		// 	return newValues;
+		// 	$.extend(numberOfNewValuesToDraw, {key : dataSeries[key].length});
+		// 	console.log("numberOfNewValues["+key+"] = " + numberOfNewValuesToDraw.key);
 		// }
-		// // returning this to be able to use it after other SVGDynamicGraph function 
-		// return this;
-
+		// return numberOfNewValuesToDraw;
 
 	},
 	// TODO
@@ -283,10 +265,15 @@ $.extend(GraphManager.prototype,{
 	},
 	_getMaxValueFromSeries: function(){
 		var arrayOfMaxValues = [];
-		for(var i=0, l=this._series.length; i<l; i++){
+		// for(var i=0, l=this._series.length; i<l; i++){
 			// TODO remove in final version
 			//console.log(this._series[i]._name + ' maxValue = ' + this._series[i]._maxValue);
-			arrayOfMaxValues.push(this._series[i]._maxValue);
+			// arrayOfMaxValues.push(this._series[i]._maxValue);
+		// }
+		for( key in this._series){
+			if(this._series.hasOwnProperty(key)){
+				arrayOfMaxValues.push(this._series[key].getMaxValue());
+			}
 		}
 		return arrayOfMaxValues.length != 0 ? Math.max.apply(Math,arrayOfMaxValues) : undefined;
 	},
@@ -307,7 +294,24 @@ $.extend(GraphManager.prototype,{
 	        // console.log(key + "not found");
 	    }
     	return false;
-	}   
+	},
+	/**
+	* Function to search series in Array by name
+	* @param name of searched series
+	* @return DataSeries object or none 
+	*/
+	_getSeriesByName : function(name){
+		if(_getSeriesByName.cache[name]){
+			return this._series[_getSeriesByName.cache[name]];
+		}else{
+			for (var i = this._series.length; i--;) {
+				if(this._series[i].getName() == name){
+					_getSeriesByName.cache[name] = i;
+					return this._series[_getSeriesByName.cache[name]];
+				}
+			}			
+		}
+	} 
 
 });
 
@@ -505,57 +509,134 @@ $.extend(Axis.prototype,{
 		}
 	}
 });
-function DataSeries(graphManager, values, labels, name){
-	this.graphManager = graphManager;
-	this._values = values || [];
-	this._newValues = [];
-	this._maxValue = Math.max.apply(Math,this._values);
-	this._labels = labels || [];
-	this._newLabels = [];
-	this._name = name || '';
-	this._dateOfLastUpdate; // Value which allows to get new values since last update
+// function DataSeries(graphManager, values, labels, name){
+	// ============ old ==========================
+	// this.graphManager = graphManager;
+	// this._values = values || [];
+	// this._newValues = [];
+	// this._maxValue = Math.max.apply(Math,this._values);
+	// this._labels = labels || [];
+	// this._newLabels = [];
+	// this._name = name || '';
+	// this._dateOfLastUpdate; // Value which allows to get new values since last update
 
-	// holder for element which reprezents this series of data
-	this._element;
-	this._pathElement; // worry later about this
-	this._lastValuePoint;
-}
-$.extend (DataSeries.prototype, {
-	// values - array of new values
-	// extendValues - (boolean) if true extend current array, else override _values
-	values : function (values){
-		if(arguments.length == 0){
-			return this._values;
+	// // holder for element which reprezents this series of data
+	// this._element;
+	// this._pathElement; // worry later about this
+	// this._lastValuePoint;
+	//==============================================
+
+// ## New approach to get immutable vars (closures!)
+function DataSeries(measurements, name){
+	var _measurements = measurements || []; // e.g. [ { value : 0.92, timestamp : 12435436 }];
+	var _maxValue = Math.max.apply(Math,this._getValues(measurements));
+	var _name = name || '';
+	var _dateOfLastUpdate = measurements.last().timestamp;;
+	var _element;
+	//var _dateOfLastDrawedMeasure; // TODO to consider
+
+	// private functions ! 
+	function _getValues(measurements){
+			var values = [];
+			for(var i=0,l=measurements.length; i < l; i++){
+				values.push(measurements[i].value);
+			}
+			return values;
+	};
+	/**
+	* Private function to update maximum value in this serie.
+	* Comparing current max value with max value from new data,
+	* to avoid searching max value accros the values array
+	*/
+	function _updateMaxValueFromMeasurements(newMeasurements){
+		var valuesArray = this._getValues(newMeasurements);
+		var newMaxValue = Math.max.apply(Math,valuesArray);
+		// if (this._maxValue != undefined){
+		if(this._maxValue < newMaxValue){
+				this._maxValue = newMaxValue;
+		}  
+	};
+	
+	/**
+	* Returning object with public functions ( closures )
+	*/
+	return {
+		/**
+		*
+		*/
+		update : function(measurements){
+			_measurements.extend(measurements);
+			console.log("last timestamp" + measurements.last().timestamp);
+			_dateOfLastUpdate = measurements.last().timestamp;
+		},
+		/**
+		* Function to return array of measurements that are not drawed, 
+		* based on number of measurements which came from server
+		* @param number of values that came from server
+		*/
+		getMeasurmentsToDraw : function(numberOfNewValuesToDraw){
+			return _measurements.slice(_measurements.length - numberOfNewValuesToDraw);
+		},
+		/**
+		*
+		*/
+		svgElement : function(el){
+			if(arguments.length == 0){
+				return _element;
+			}
+			_element = el;
+		},
+		/**
+		*
+		*/
+		getMaxValue: function(){
+			return _maxValue;
+		},
+		/**
+		*
+		*/
+		getName : function(){
+			return _name;
 		}
-		this._values.extend(values);
-		this._maxValue = Math.max.apply(Math,this._values);
-	},
-	labels : function(labels){
-		if(arguments.length == 0){
-			return this._labels;
-		}
-		$.extend(this._labels, labels);		
-	},
-	name : function(name){
-		if(arguments.length == 0){
-			return this._name;
-		}
-		this._name = name ;
-	},
-	update : function(values, labels, dateOfLastUpdate){
-		this.values(values);
-		this.labels(labels);
-		this._dateOfLastUpdate = dateOfLastUpdate;
-		// this._newLabels.extend(newlabels);
-		// this._newValues.extend(newValues);
-	},
-	element : function(el){
-		if(arguments.length == 0){
-			return this._element;
-		}
-		this._element = el;
 	}
-});
+}
+// ============== old ======================
+//$.extend (DataSeries.prototype, {
+	// values - array of new values
+	// values : function (values){
+	// 	if(arguments.length == 0){
+	// 		return this._values;
+	// 	}
+	// 	this._values.extend(values);
+	// 	this._maxValue = Math.max.apply(Math,this._values);
+	// },
+	// labels : function(labels){
+	// 	if(arguments.length == 0){
+	// 		return this._labels;
+	// 	}
+	// 	$.extend(this._labels, labels);		
+	// },
+	// name : function(name){
+	// 	if(arguments.length == 0){
+	// 		return this._name;
+	// 	}
+	// 	this._name = name ;
+	// },
+	// update : function(values, labels, dateOfLastUpdate){
+	// 	this.values(values);
+	// 	this.labels(labels);
+	// 	this._dateOfLastUpdate = dateOfLastUpdate;
+	// 	// this._newLabels.extend(newlabels);
+	// 	// this._newValues.extend(newValues);
+	// },
+	// element : function(el){
+	// 	if(arguments.length == 0){
+	// 		return this._element;
+	// 	}
+	// 	this._element = el;
+	// }	
+//});
+//==========================================
 //===============================================================================================================
 //------------------------------------------------ Line Graph --------------------------------------------------
 function LineGraph(){
@@ -567,13 +648,13 @@ $.extend(LineGraph.prototype, {
 	},
 	draw: function(graphArea){
 		var xScale = Math.round(graphArea._chartSVGSize[0]/this.graphManager.settings.ticks);
+		// graphArea._chartSVGSize[1] - topPadding  => to get padding at max value
 		var yScale = graphArea._chartSVGSize[1]/this.graphManager._getMaxValueFromSeries();
 		// TODO remove
 		// console.log("xScale = " + xScale);
 		// console.log("yScale = " + yScale);
 		// console.log("settings.ticks = " + this.graphManager.settings.ticks);
 
-		//self.setInterval(graphArea._moveArea,3000,{path : this.path, pathElement: path2, offset : liczba, svgManager : graphArea.svgManager, _chartSVGSize : graphArea._chartSVGSize});
 		graphArea._drawGridLines();
 		this.drawSeries(graphArea,xScale,yScale);
 		this.drawAxes(graphArea);
@@ -581,17 +662,29 @@ $.extend(LineGraph.prototype, {
 		// this.graphManager._defineDefs();
 	},
 	// instead of using this._series use only new values to attach it to series line
-	drawSeries : function(graphArea, xScale, yScale, numberOfNewValuesToDraw){
+	drawSeries : function(graphArea, xScale, yScale, numberOfNewValuesToDrawInSeries){
 		// TODO instead of using this.graphManager._series use newValues
-		// for(key in numberOfNewValuesToDraw){
-		// 	if()
-		// }
 		var seriesLength = this.graphManager._series.length;
-		for(var i=(seriesLength - numberOfNewValuesToDraw); i < seriesLength; i++ ){
+		for (key in numberOfNewValuesToDrawInSeries){
+			var series = this.graphManager._getSeriesByName(key);
+			if(series != undefined){
+				var measurementsToDraw = series.getMeasurmentsToDraw(numberOfNewValuesToDrawInSeries[key]);
 
+				for(var i=0, l = measurementsToDraw.length; i < l; i++){
+					var seriesSvgElement = series.svgElement();
+					if(seriesSvgElement == undefined){
+
+						// TODO calculate the x position for new series if such appear
+						var element = { path : graphArea.svgManager.createPath(),
+										pathNode : graphArea.svgManager.path(graphArea._graphAreaGroup, path.move) };
+						series.svgElement(element);
+					}
+				}
+			}
 
 		}
 
+		//========================== old ==============================
 		for(var i=0, l=this.graphManager._series.length; i<l; i++){
 			var values = this.graphManager._series[i].values();
 			
@@ -690,7 +783,7 @@ function TestData(numberOfNewValues, numberOfSeries){
 			measure.value = Math.abs(Math.sin(j*100));
 			measure.timestamp = new Date();
 			console.log("value : " + measure.value + " | " + " timestamp " + measure.timestamp);
-			console.log("timestamp " + measure.timestamp.getDate());
+			// console.log("timestamp " + measure.timestamp.getDate());
 			seria.name.push(measure);
 		}
 		$.extend(obj,seria);
