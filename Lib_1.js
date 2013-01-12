@@ -1,3 +1,11 @@
+// TODO 
+// - widzimi tylko aktualne dane
+// - oś pozioma to czas, zakladamy wykresu zalezne czasowo 
+// - log zeby dostac rzad wielkosci
+
+// [ 1,2,2.5,5,10] - lista naszych dostepnych wartosci na osi, trzeba ja przenożyc w zaleznosci od rzedu max wartosci
+//  i znalesc najblizsza wartosc wynikowi działania maxValue/yAxisTicks
+
 // feautres 
 //  -- dać uzytkownikowi możliwość tworzenia templatów wygladu wykresu (Elycharts)
 // 	-- każda wartość powinna mieć swoją labelke, zastanwić sie jak je wyświetlać, uzytkownik powinien miec mozliwosc
@@ -5,6 +13,19 @@
 		/*series = { 	seria_1 : { values : [10.1, 10.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
 						seria_2 : { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}   
 					};*/
+
+		// series = {
+		// 	"seria_1" : [
+		// 					{ value: 0.632, timestamp : 12:41 ( in milis)},
+		// 					{ value: 0.782, timestamp : 12:42},
+		// 					{ value: 0.832, timestamp : 12:43},
+		// 				],
+		// 	"seria_2" : [
+		// 					{ value: 0.632, timestamp : 12:41},
+		// 					{ value: 0.782, timestamp : 12:42},
+		// 					{ value: 0.832, timestamp : 12:43},
+		// 				],
+		// }
 // -------------- settings -----------------
 //	#graphArea
 //		grid : true/false,
@@ -99,7 +120,7 @@ function GraphManager(element, charttype, width, height, settings){
 		draw_axis: true,
 		label_rotation: 90,
 		label_size:10,
-		ticks : 6,
+		ticks : 10,
 		name: $(element).attr('id')
 	}
 	//===================
@@ -116,14 +137,16 @@ function GraphManager(element, charttype, width, height, settings){
 	this.isTitle = true;
 	//-----------------
 	this._series = [];
-	this._addSeries({ 	'seria_1' : { values :[1.1, 5.5, 11.8, 7.50, 6.9, 7.9], labels : ['2000','2001','2002','2003']}, 
-						'seria_2': { values : [9.50, 10.5, 9.2, 9.8, 5.7, 8.9],    labels : ['2001','2002','2003','2004']}});
+	// this._addSeries({ 	'seria_1' : { values :[2,0.5,0.2,0.6,0.7], labels : ['2000','2001','2002','2003']}, 
+						// 'seria_2': { values : [0,1,0,0.5,0.2,1],    labels : ['2001','2002','2003','2004']}});
 	// this._addSeries({ 	'seria_1' : { values : [10.1, 20.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
 	// 					'seria_2': { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}});
-	this._addSeries({ 	'seria_4': { values : [2.50, 3, 4.2, 5.8, 6.8, 7.8],    labels : ['2001','2002','2003','2004']},
-						'seria_3': { values : [9.50, 5, 6.2, 7.8, 7.2, 6.0],    labels : ['2001','2002','2003','2004']}});
+	// this._addSeries({ 	'seria_4': { values : [2.50, 3, 4.2, 5.8, 6.8, 7.8],    labels : ['2001','2002','2003','2004']},
+	// 					'seria_3': { values : [9.50, 5, 6.2, 7.8, 7.2, 6.0],    labels : ['2001','2002','2003','2004']}});
 
-	this._printSeries();
+	// TODO remove after tests
+	//this._printSeries();
+
 	this._xAxis = new Axis(this,this.settings.ticks);
 	this._yAxis = new Axis(this,5);
 	this.regions = {
@@ -159,6 +182,7 @@ $.extend(GraphManager.prototype,{
 		this._graphArea._draw();
 		/*======= invoke chart drawing ==========*/
 		this.charttype.draw(this._graphArea);
+		this.callback();
 
 		/* returning this to be able to use it after other SVGDynamicGraph function */		
 		return this;
@@ -179,46 +203,89 @@ $.extend(GraphManager.prototype,{
 	* @param DataSeries - object literal (JSON) with new values	
 	*/
 	_addSeries : function(dataSeries){
-
-		if(typeof dataSeries == 'object'){
-
-			//TODO remove in final version
-			console.log("array size compare : " + Object.size(dataSeries) + " > " + this._series.length);
-			var newValues = [];
-			for(key in dataSeries){
-				if(dataSeries.hasOwnProperty(key)){
-					if(!this.containSeries(key,this._series)){
-
-						// TODO remove in final version
-						console.log("Adding new series where key is : " + key);
-						this._series.push(new DataSeries(this, dataSeries[key].values, dataSeries[key].labels, key));
-						newValues.push(dataSeries[key].values);
-					}else{
-						for(var i=0, l=this._series.length; i < l; i++){
+		var numberOfNewValuesToDraw = {};
+		for( key in dataSeries){
+			if(dataSeries.hasOwnProperty(key)){
+				var values =[];
+				var labels = []; // timestamps
+				for(var i=0,l=dataSeries[key].length; i < l; i++){
+					console.log(dataSeries[key][i].value);
+					values.push(dataSeries[key][i].value);
+					labels.push(dataSeries[key][i].timestamp);
+				}
+				if(!this._containSeries(key,this._series)){
+					this._series.push(new DataSeries(this, values, labels, key));
+					
+				}else{
+					for(var i=0, l=this._series.length; i < l; i++){
 							if(this._series[i].name() == key){
-								// TODO remove in final version
-								console.log("Series " + key + "found");
-								this._series[i].update(dataSeries[key].values,dataSeries[key].labels);
-								newValues.push(dataSeries[key].values);
-							}else{
-
-								// TODO remove in final version
-								console.log("Series not found yet");
+								this._series[i].update(values,labels);
 							}
-						}
 					}
 				}
 			}
-			return newValues;
+			$.extend(numberOfNewValuesToDraw, {key : dataSeries[key].length});
+			console.log("numberOfNewValues["+key+"] = " + numberOfNewValuesToDraw.key);
 		}
-//		returning this to be able to use it after other SVGDynamicGraph function 
+		return numberOfNewValuesToDraw;
+
+		// if(typeof dataSeries == 'object'){
+
+		// 	//TODO remove in final version
+		// 	// console.log("array size compare : " + Object.size(dataSeries) + " > " + this._series.length);
+		// 	var newValues = [];
+		// 	for(key in dataSeries){
+		// 		if(dataSeries.hasOwnProperty(key)){
+		// 			if(!this._containSeries(key,this._series)){
+
+		// 				// TODO remove in final version
+		// 				// console.log("Adding new series where key is : " + key);
+		// 				this._series.push(new DataSeries(this, dataSeries[key].values, dataSeries[key].labels, key));
+		// 				newValues.push(dataSeries[key].values);
+		// 			}else{
+		// 				for(var i=0, l=this._series.length; i < l; i++){
+		// 					if(this._series[i].name() == key){
+		// 						// TODO remove in final version
+		// 						// console.log("Series " + key + "found");
+		// 						this._series[i].update(dataSeries[key].values,dataSeries[key].labels);
+		// 						newValues.push(dataSeries[key].values);
+		// 					}else{
+
+		// 						// TODO remove in final version
+		// 						// console.log("Series not found yet");
+		// 					}
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// 	return newValues;
+		// }
+		// // returning this to be able to use it after other SVGDynamicGraph function 
+		// return this;
+
+
+	},
+	// TODO
+	callback : function(){
+		console.log("Standard callback");
+		var inst = this;
+		//self.setInterval(function(){inst.charttype.draw(inst._graphArea);},1000);
+		self.setInterval(function(){
+			var numberOfNewValues = inst._addSeries(TestData(5,1));
+			//inst._printSeries();
+			inst.charttype.refreshGraph(inst._graphArea, numberOfNewValues);
+		},2000);
+		return this;
+	},
+	setCallback : function(obj){
+		this.callback = obj;
 		return this;
 	},
 	_getMaxValueFromSeries: function(){
 		var arrayOfMaxValues = [];
 		for(var i=0, l=this._series.length; i<l; i++){
 			// TODO remove in final version
-			console.log(this._series[i]._name + ' maxValue = ' + this._series[i]._maxValue);
+			//console.log(this._series[i]._name + ' maxValue = ' + this._series[i]._maxValue);
 			arrayOfMaxValues.push(this._series[i]._maxValue);
 		}
 		return arrayOfMaxValues.length != 0 ? Math.max.apply(Math,arrayOfMaxValues) : undefined;
@@ -231,16 +298,16 @@ $.extend(GraphManager.prototype,{
 
 		}
 	},
-	containSeries : function(name, array) {
+	_containSeries : function(name, array) {
 	    var i = array.length;
 	    while (i--) {
 	        if (array[i].name() == name) {
 	            return true;
 	        }
-	        console.log(key + "not found");
+	        // console.log(key + "not found");
 	    }
     	return false;
-	}
+	}   
 
 });
 
@@ -296,7 +363,7 @@ $.extend(GraphArea.prototype,{
 		axis._line = this.svgManager.line(gline, x1, y1, x2, y2, axis._lineSettings);
 		var len = 10;
 		if(x1 == x2 ){
-			console.log('Horizontal Axis');
+			// console.log('Horizontal Axis');
 			var axisLength = y2 - y1;
 			var offset = Math.round(axisLength/axis._ticks);
 			var counter = 0;
@@ -327,11 +394,17 @@ $.extend(GraphArea.prototype,{
 			obj.offset -= obj.xScale;
 			obj.path.line(obj.lastXpointposition+(obj.offset*(-1)),(Math.random()*obj._chartSVGSize[1])*0.5);
 		}
+		// for (var i=0;i<=0;i++){
+		// 	obj.offset -= obj.xScale;
+		// 	var sinvalue = Math.sin(obj.offset)*100;
+		// 	console.log("Sin value = " + sinvalue)
+		// 	obj.path.line(obj.lastXpointposition+(obj.offset*(-1)),sinvalue);
+		// }
 		obj.graphArea.svgManager.change(obj.pathElement,{d:  obj.path.path()} );
-
-		//$('#graphArea').animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 100);
+		// TODO change id to class
 		var objId = "."+obj.graphArea.graphManager.settings.name+'graphArea';
-		console.log(objId);
+		// console.log(objId);
+		//$(objId).animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 100);
 		 $(objId).get(0).setAttribute('transform', 'translate(' + obj.offset +',0)');
 		// --------------- moving gridlines ---------------
 		var bg = $('#gridLines').get(0);
@@ -435,31 +508,33 @@ $.extend(Axis.prototype,{
 function DataSeries(graphManager, values, labels, name){
 	this.graphManager = graphManager;
 	this._values = values || [];
+	this._newValues = [];
 	this._maxValue = Math.max.apply(Math,this._values);
 	this._labels = labels || [];
+	this._newLabels = [];
 	this._name = name || '';
 	this._dateOfLastUpdate; // Value which allows to get new values since last update
 
 	// holder for element which reprezents this series of data
 	this._element;
+	this._pathElement; // worry later about this
+	this._lastValuePoint;
 }
 $.extend (DataSeries.prototype, {
 	// values - array of new values
 	// extendValues - (boolean) if true extend current array, else override _values
-	values : function (values,extendValues){
+	values : function (values){
 		if(arguments.length == 0){
 			return this._values;
 		}
 		this._values.extend(values);
 		this._maxValue = Math.max.apply(Math,this._values);
 	},
-	labels : function(labels, extendLabels){
+	labels : function(labels){
 		if(arguments.length == 0){
 			return this._labels;
 		}
-		if(extendLabels){
-			$.extend(this._labels, labels);
-		}	
+		$.extend(this._labels, labels);		
 	},
 	name : function(name){
 		if(arguments.length == 0){
@@ -468,10 +543,11 @@ $.extend (DataSeries.prototype, {
 		this._name = name ;
 	},
 	update : function(values, labels, dateOfLastUpdate){
-		this.values(values, true);
-		this.labels(labels,true);
+		this.values(values);
+		this.labels(labels);
 		this._dateOfLastUpdate = dateOfLastUpdate;
-		this
+		// this._newLabels.extend(newlabels);
+		// this._newValues.extend(newValues);
 	},
 	element : function(el){
 		if(arguments.length == 0){
@@ -492,9 +568,10 @@ $.extend(LineGraph.prototype, {
 	draw: function(graphArea){
 		var xScale = Math.round(graphArea._chartSVGSize[0]/this.graphManager.settings.ticks);
 		var yScale = graphArea._chartSVGSize[1]/this.graphManager._getMaxValueFromSeries();
-		console.log("xScale = " + xScale);
-		console.log("yScale = " + yScale);
-		console.log("settings.ticks = " + this.graphManager.settings.ticks);
+		// TODO remove
+		// console.log("xScale = " + xScale);
+		// console.log("yScale = " + yScale);
+		// console.log("settings.ticks = " + this.graphManager.settings.ticks);
 
 		//self.setInterval(graphArea._moveArea,3000,{path : this.path, pathElement: path2, offset : liczba, svgManager : graphArea.svgManager, _chartSVGSize : graphArea._chartSVGSize});
 		graphArea._drawGridLines();
@@ -504,31 +581,55 @@ $.extend(LineGraph.prototype, {
 		// this.graphManager._defineDefs();
 	},
 	// instead of using this._series use only new values to attach it to series line
-	drawSeries : function(graphArea, xScale, yScale, newValues){
+	drawSeries : function(graphArea, xScale, yScale, numberOfNewValuesToDraw){
 		// TODO instead of using this.graphManager._series use newValues
+		// for(key in numberOfNewValuesToDraw){
+		// 	if()
+		// }
+		var seriesLength = this.graphManager._series.length;
+		for(var i=(seriesLength - numberOfNewValuesToDraw); i < seriesLength; i++ ){
+
+
+		}
+
 		for(var i=0, l=this.graphManager._series.length; i<l; i++){
 			var values = this.graphManager._series[i].values();
 			
-			if(this.graphManager._series[i].element() == undefined){
-			this.graphManager._series[i].element(graphArea.svgManager.createPath());
-			}
 			var path = this.graphManager._series[i].element();		
-			var pathElement = graphArea.svgManager.path(graphArea._graphAreaGroup, path.move(0,graphArea._chartSVGSize[1] - values[0]*yScale),{fill: 'none',stroke: 'gray', strokeWidth: 2, markerMid: 'url(#circles)'});
+			var pathElement = this.graphManager._series[i].pathElement;
 			
+			var lastValueXpoint = this.graphManager._series[i]._lastValuePoint;
+			if(this.graphManager._series[i].element() == undefined){
+				this.graphManager._series[i].element(graphArea.svgManager.createPath());
+				path = this.graphManager._series[i].element();
+				lastValueXpoint = this.graphManager._series[i]._lastValuePoint=0;
+				this.graphManager._series[i].pathElement = pathElement = graphArea.svgManager.path(graphArea._graphAreaGroup, path.move(lastValueXpoint,graphArea._chartSVGSize[1] - values[0]*yScale),{fill: 'none',stroke: 'gray', strokeWidth: 2, markerMid: 'url(#circles)'});
+			}
+			// else{
+			// 	//$(pathElement,graphArea.svgManager.root()).removeChild(pathElement);
+			// 	graphArea._graphAreaGroup.removeChild(pathElement);
+			// 	console.log("Path usuniety");
+			// }
 			// temporary value to have x point of last value from series
-			var lastValueXpoint = 0;
 			for(var j=1, len=this.graphManager._series[i]._values.length; j<len; j++){
-				var x = j*xScale;
+				// var x = j*xScale + lastValueXpoint;
+				console.log("xScale = "+xScale);
+//				var x = xScale + lastValueXpoint;
+				lastValueXpoint += xScale;
 				var y = graphArea._chartSVGSize[1] - values[j]*yScale;
 				// console.log("(" + x + ", " + y + " )");
 				// console.log("#(" + j*xScale + " ," + values[j]*yScale);
-				graphArea.svgManager.change(pathElement, {d: path.line(x,y).path()});
-				lastValueXpoint=x;
+
+				this.graphManager._series[i]._lastValuePoint = lastValueXpoint;
+				graphArea.svgManager.change(pathElement, {d: path.line(lastValueXpoint,y).path()});
+			}
+			if(lastValueXpoint > graphArea._chartSVGSize[0]){
+			//	this.moveArea(lastValueXpoint);
 			}
 			// TODO move this to callback function (GraphManager)
 			//if(lastValueXpoint+(0.2*graphArea._chartSVGSize[0]) >= graphArea._chartSVGSize[0]){
 				console.log("last x point : " + lastValueXpoint);
-				var interval_id = self.setInterval(graphArea._moveArea,2000,{lastXpointposition: lastValueXpoint, path : path, pathElement: pathElement, offset : 0, xScale: xScale, graphArea : graphArea, _chartSVGSize : graphArea._chartSVGSize});
+				//var interval_id = self.setInterval(graphArea._moveArea,100,{canDraw: true, lastXpointposition: lastValueXpoint, path : path, pathElement: pathElement, offset : 0, xScale: xScale, graphArea : graphArea, _chartSVGSize : graphArea._chartSVGSize});
 			//}
 		}
 	},
@@ -548,15 +649,55 @@ $.extend(LineGraph.prototype, {
 	addSeries: function(){
 
 	},
-	refreshGraph: function(){
-		var newValues = this.graphManager._addSeries({ 	'seria_1' : { values : [10.1, 20.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
-						'seria_2': { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}});
+	moveArea:function(offset1){
+		var offset = offset1*(-1);
+		var objId = "."+this.graphManager.settings.name+'graphArea';
+		 $(objId).get(0).setAttribute('transform', 'translate(' + offset +',0)');
+		var bg = $('#gridLines').get(0);
+		var matrix = [offset,0,0,0,offset,100];
+		matrix = 'matrix(' + matrix + ')';
+		var translate = [offset,0];
+		translate = 'translate(' + translate + ')';
+	    bg.setAttribute('patternTransform', translate);
 
+	},
+	refreshGraph: function(graphArea,numberOfNewValuesToDraw){
+		var xScale = Math.round(graphArea._chartSVGSize[0]/this.graphManager.settings.ticks);
+		var yScale = graphArea._chartSVGSize[1]/this.graphManager._getMaxValueFromSeries();
+		console.log("yScale = " + yScale);
+		var newValues = [];
+		
+		this.drawSeries(graphArea,xScale,yScale,numberOfNewValuesToDraw);
 		
 	}
 });
 //-------------------------------------------------------------------------
+function TestData(numberOfNewValues, numberOfSeries){
+	// 	"seria_1" : [
+		// 					{ value: 0.632, timestamp : 12:41},
+		// 					{ value: 0.782, timestamp : 12:42},
+		// 					{ value: 0.832, timestamp : 12:43},
+		// 				],
+	var obj = {};
+	for(var i=0; i < numberOfSeries; i++){
+		var name = "seria_"+i;
+		var seria = { name : [] }
+		for(var j=0; j< numberOfNewValues; j++){
+			var measure = {
+				value : 0,
+				timestamp : 0
+			}
+			measure.value = Math.abs(Math.sin(j*100));
+			measure.timestamp = new Date();
+			console.log("value : " + measure.value + " | " + " timestamp " + measure.timestamp);
+			console.log("timestamp " + measure.timestamp.getDate());
+			seria.name.push(measure);
+		}
+		$.extend(obj,seria);
 
+	}
+	return obj;
+}
 function calculteRelativeValue(wrapperSize, ratio){
 	return wrapperSize*ratio;
 }
@@ -620,7 +761,7 @@ Object.size = function(obj) {
 Array.prototype.extend = function(values){
 	for(var i=0, l=values.length; i<l; i++){
 		this.push(values[i]);
-		console.log('Array.extend() value = ' + values[i]);
+		// console.log('Array.extend() value = ' + values[i]);
 	}
 }
 /**
