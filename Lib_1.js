@@ -10,10 +10,7 @@
 //  -- dać uzytkownikowi możliwość tworzenia templatów wygladu wykresu (Elycharts)
 // 	-- każda wartość powinna mieć swoją labelke, zastanwić sie jak je wyświetlać, uzytkownik powinien miec mozliwosc
 //		ustawienia ile labalek powinno byc w polu wykresu 
-		/*series = { 	seria_1 : { values : [10.1, 10.5, 10.8, 9.50], labels : ['2000','2001','2002','2003']}, 
-						seria_2 : { values : [9.50, 10, 9.2, 9.8,],    labels : ['2001','2002','2003','2004']}   
-					};*/
-
+		
 		// ACTUAL format of data
 		// series = {
 		// 	"seria_1" : [
@@ -122,7 +119,7 @@ function GraphManager(element, charttype, width, height, settings){
 		label_rotation: 90,
 		label_size:10,
 		ticks : 10, // TODO change to time (e.g from last 2h)
-		timePeriod : 1000*60, // (in milis)
+		timePeriod : 1000*60*60, // (in milis)
 		name : $(element).attr('id')
 	}
 	//===================
@@ -141,8 +138,8 @@ function GraphManager(element, charttype, width, height, settings){
 	this._series = [];
 	// TODO remove after tests
 	//this._printSeries();
-
-	this._currentTimelineDate = 0;
+	this.isUpdateActive = true;
+	this._currentTimelineDate = new Date();
 	this._xAxisDateTimeRange;
 	this._setDateTimeRange();
 	this._xAxis = new Axis(this,this.settings.ticks);
@@ -158,7 +155,7 @@ function GraphManager(element, charttype, width, height, settings){
 		this._titleArea = new TitleArea(this);
 	}
 	if(this.isLegend){
-		this._lagendArea = new LegendArea(this);
+		this._legendArea = new LegendArea(this);
 	}
 	this._graphArea = new GraphArea(this);
 	
@@ -170,23 +167,22 @@ $.extend(GraphManager.prototype,{
 	_getRegionHeightRatio : function _getRegionHeightRatio(regionName){
 		return this.regions[regionName].y.toY - this.regions[regionName].y.fromY;
 	},
-	draw: function(){
+	draw: function draw(){
 		if(this.isTitle){
 			this._titleArea._draw();
 		}
 		if(this.isLegend){
-			this._lagendArea._draw();
+			this._legendArea._draw();
 		}
 		this._graphArea._draw();
 		/*======= invoke chart drawing ==========*/
+		this.activateUpdate();//this.callback();
 		this.charttype.draw(this._graphArea);
-
-		this.callback();
 
 		/* returning this to be able to use it after other SVGDynamicGraph function */		
 		return this;
 	},
-	_defineDefs : function(){
+	_defineDefs : function _defineDefs() {
 		var defs = this.svgManager.defs(this.settings.name + '_defs');
 		var gridlines = this.svgManager.pattern(defs, "gridLines", 0,0,200,100, 0,0,100,50, {patternUnits: 'userSpaceOnUse'});
 		var line1 = this.svgManager.line(gridlines, 0,0,100,0,{strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1});
@@ -201,7 +197,7 @@ $.extend(GraphManager.prototype,{
 	* Function to add new series or update existing with new values
 	* @param DataSeries - object literal (JSON) with new values	
 	*/
-	_addSeries : function(dataSeries){
+	_addSeries : function _addSeries(dataSeries){
 		
 		var numberOfNewValuesToDrawInSeries = {};
 		for( key in dataSeries){
@@ -211,7 +207,7 @@ $.extend(GraphManager.prototype,{
 				if(series != undefined){
 					series.update(dataSeries[key]);
 				}else{
-					//console.log("dataSeries[key] = " + dataSeries[key] + "name: " + key + "fisrt value = " + dataSeries[key][1].value);
+					//LOG(arguments,'',"dataSeries[key] = " + dataSeries[key] + "name: " + key + "fisrt value = " + dataSeries[key][0].value);
 					this._series.push(new DataSeries(dataSeries[key],key));
 				}
 				var tmp = {};
@@ -221,18 +217,43 @@ $.extend(GraphManager.prototype,{
 		}
 		return numberOfNewValuesToDrawInSeries;
 	},
+	activateUpdate : function activateUpdate(){
+		this.isUpdateActive = true;
+		this._timerID = setTimeout(this.callback, 3000, this);
+		console.log("TIMER id " + this._timerID);
+	},
+	callback :function callback(inst){
+		LOG(arguments,'passed to TestData',"_currentTimelineDate = " + inst._currentTimelineDate);
+		var numberOfNewValues = inst._addSeries(TestData(5,1, new Date(inst._currentTimelineDate.getTime())));
+		inst.charttype.refreshGraph(inst._graphArea,numberOfNewValues);
+		LOG(arguments,'passed to callback',"_currentTimelineDate = " + inst._currentTimelineDate);
+		inst._timerID = setTimeout(inst.callback,3000,inst);
+		LOG(arguments,'',"callback !!!");
+		if(!inst.isUpdateActive){
+			console.log("INST timer id " + inst._timerID);
+			clearTimeout(inst._timerID);
+			LOG(arguments,'',"Timeout cleared !!!");
+		}
+		//clear();
+	},
+	clearUpdate : function clearUpdate(){
+		this.isUpdateActive = false;
+		LOG(arguments,'', "interval deactivated");
+	},
 	// TODO
-	callback : function(){
+/*	callback : function(){
 		console.log("Standard callback");
-		var inst = this;
 		var counter = 0; // temporary var to stop interval
 		//self.setInterval(function(){inst.charttype.draw(inst._graphArea);},1000);
+		this._currentTimelineDate = new Date(111111111).getTime();
+		console.log("##>callback |before interval| graphManager values : _currentTimelineDate = " + this._currentTimelineDate  +" \n\n seriesLength = " + this._series.length);
+
+		var inst = this;
 		var name = self.setInterval(function(){
 
 			// TODO ## Temoporary !
-			inst._currentTimelineDate = new Date(111111111).getTime();
 			console.log("_currentTimelineDate from callback = " + inst._currentTimelineDate );
-			var numberOfNewValues = inst._addSeries(TestData(30,1, inst._currentTimelineDate));
+			var numberOfNewValues = inst._addSeries(new TestData(30,1, inst._currentTimelineDate));
 			//inst._printSeries();
 			console.log(" _currentTimelineDate " + inst._getCurrentTimelineDate());
 			inst.charttype.refreshGraph(inst._graphArea, numberOfNewValues);
@@ -242,20 +263,24 @@ $.extend(GraphManager.prototype,{
 				clearInterval(name);
 			}
 		},2000);
+
+		console.log("##>callback |after interval| graphManager values : _currentTimelineDate = " + this._currentTimelineDate + " \n\n seriesLength = " + this._series.length);
 		return this;
-	},
-	setCallback : function(obj){
+	}, */
+	setCallback : function setCallback(obj){
 		this.callback = obj;
 		return this;
 	},
-	_getCurrentTimelineDate : function(){
+	_getCurrentTimelineDate : function _getCurrentTimelineDate(){
 		return this._currentTimelineDate;
 	},
-	_getMaxValueFromSeries: function(){
+	_getMaxValueFromSeries: function _getMaxValueFromSeries(){
 		var arrayOfMaxValues = [];
+		// LOG(arguments,''," series length = " +this._series.length);
+
 		for (var i = this._series.length; i--;) {
 			//TODO remove in final version
-			//console.log(this._series[i].getName() + ' maxValue = ' + this._series[i].getMaxValue());
+			console.log(this._series[i].getName() + ' maxValue = ' + this._series[i].getMaxValue());
 			arrayOfMaxValues.push(this._series[i].getMaxValue());
 		}
 		// for( key in this._series){
@@ -263,18 +288,20 @@ $.extend(GraphManager.prototype,{
 		// 		arrayOfMaxValues.push(this._series[key].getMaxValue());
 		// 	}
 		// }
-		return arrayOfMaxValues.length != 0 ? Math.max.apply(Math,arrayOfMaxValues) : undefined;
+		return arrayOfMaxValues.length != 0 ? Math.max.apply(Math,arrayOfMaxValues) : 0;
 	},
-	_getDateOfLastUpdateFromAllSeries: function(){
+	_getDateOfLastUpdateFromAllSeries: function _getDateOfLastUpdateFromAllSeries(){
+		// LOG(arguments,"before loop", "series length = " + this._series.length);
 		var arrayOfDates = [];
 		for (var i = this._series.length; i--;) {
-			arrayOfDates.push(this._series[i].getDateoFLastMeasurment());
+			console.log("date series " + this._series[i].getDateoFLastMeasurment());
+			arrayOfDates.push(this._series[i].getDateoFLastMeasurment().getTime());
 		}
-		return arrayOfDates.length != 0 ? Math.max.apply(Math,arrayOfDates) : undefined;
+		return arrayOfDates.length != 0 ? new Date(Math.max.apply(Math,arrayOfDates)) : new Date();
 	},
-	_printSeries:function(){
+	_printSeries:function _printSeries(){
 		for(var i=0, l=this._series.length; i<l; i++){
-			console.log("Name : " + this._series[i].getName());
+			// LOG(arguments,'',"Name : " + this._series[i].getName());
 			var measurements = this._series[i].getMeasurmentsToDraw(-1);
 			console.log("Measurements :");
 			for(var j=0, len=measurements.length; j<len; j++){
@@ -282,13 +309,13 @@ $.extend(GraphManager.prototype,{
 			}
 		}
 	},
-	_containSeries : function(name, array) {
+	_containSeries : function _containSeries(name, array) {
 	    var i = array.length;
 	    while (i--) {
 	        if (array[i].name() == name) {
 	            return true;
 	        }
-	        // console.log(key + "not found");
+	        // LOG(arguments,'',key + "not found");
 	    }
     	return false;
 	},
@@ -297,28 +324,34 @@ $.extend(GraphManager.prototype,{
 	* @param name of searched series
 	* @return DataSeries object or none 
 	*/
-	_getSeriesByName : function(name){
+	_getSeriesByName : function _getSeriesByName(name){
 		if(this._getSeriesByName.cache == undefined){
-			console.log(">_getSeriesByName || defining cache ");
+			// LOG(arguments,'',"defining cache ");
 			this._getSeriesByName.cache = {};
 		}
 		if(this._getSeriesByName.cache[name]){
-			console.log(">_getSeriesByName || cache is true for name " + name);
+			// LOG(arguments, '', "cache is true for name " + name);
 			return this._series[this._getSeriesByName.cache[name]];
 		}else{
 			for (var i = this._series.length; i--;) {
 				if(this._series[i].getName() == name){
 					this._getSeriesByName.cache[name] = i;
-					console.log(">_getSeriesByName || Series name : " + this._series[i].getName());
+					// LOG(arguments,''," Series name : " + this._series[i].getName());
 					return this._series[this._getSeriesByName.cache[name]];
 				}
 			}			
 		}
 	},
-	_setDateTimeRange : function(){
-		var current = (new Date()).getTime();
-		var begining = (new Date(current - this.settings.timePeriod)).getTime();
-		this._xAxisDateTimeRange = Math.abs(current - begining);
+	_setDateTimeRange : function _setDateTimeRange(){
+		LOG(arguments,'new way', "timeRange = " + new Date(this._currentTimelineDate.getTime()-this.settings.timePeriod));
+		LOG(arguments,'new way', "timeRange = " + new Date(this.settings.timePeriod));
+
+		this._xAxisDateTimeRange = new Date(this.settings.timePeriod).getTime();
+//		var current = (new Date()).getTime();
+//		var begining = (new Date(current - this.settings.timePeriod)).getTime();
+//		this._xAxisDateTimeRange = new Date(Math.abs(current - begining));
+//		LOG(arguments,'odl way', "_xAxisDateTimeRange = " + this._xAxisDateTimeRange);
+
 	} 
 
 });
@@ -335,7 +368,7 @@ function GraphArea(graphManager){
 	this.paddingTop = 0.01;
 };
 $.extend(GraphArea.prototype,{
-	_draw: function(){
+	_draw: function draw(){
 		this._group = this.svgManager.group(this.svgManager._wrapper, "graphRegion", {class_: "graphRegion", transform: 'scale(1,1)'});
 	
 		// --- changing group position if legend or title are shown
@@ -362,11 +395,11 @@ $.extend(GraphArea.prototype,{
 		this._graphAreaGroup = this.svgManager.group(this._chartSVG, {class_: this.graphManager.settings.name+'graphArea'});
 
 	},
-	_drawGridLines : function(){
+	_drawGridLines : function draw(){
 		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize[0],this._chartSVGSize[1],{class_: "graphBackground",fill: 'none', fill: 'url(#gridLines)'});
 		
 	},
-	_drawAxis: function(axis,id, x1,y1,x2,y2, dateOfLastUpdate){
+	_drawAxis: function _drawAxis(axis,id, x1,y1,x2,y2, dateOfLastUpdate){
 		var x1 = parseInt(x1);
 		var y1 = parseInt(y1);
 		var x2 = parseInt(x2);
@@ -375,7 +408,7 @@ $.extend(GraphArea.prototype,{
 		axis._line = this.svgManager.line(gline, x1, y1, x2, y2, axis._lineSettings);
 		var len = 10;
 		if(x1 == x2 ){
-			// console.log('Horizontal Axis');
+			// LOG(arguments,'','Horizontal Axis');
 			var axisLength = y2 - y1;
 			var offset = Math.round(axisLength/axis._ticks);
 			var counter = 0;
@@ -399,7 +432,7 @@ $.extend(GraphArea.prototype,{
 
 	// TODO - should be implemented in each graph type later!
 	// should only move graphArea by value passed to function ! delete change line values
-	_moveArea: function(obj){
+	_moveArea: function _moveArea(obj){
 
 //		== new random values ==
 		for (var i=0;i<1;i++){
@@ -410,7 +443,7 @@ $.extend(GraphArea.prototype,{
 		obj.graphArea.svgManager.change(obj.pathElement,{d:  obj.path.path()} );
 		// TODO change id to class
 		var objId = "."+obj.graphArea.graphManager.settings.name+'graphArea';
-		// console.log(objId);
+		// LOG(arguments,'',objId);
 		//$(objId).animate( {svgTransform: 'translate(' + obj.offset +',0)'}, 100);
 		 $(objId).get(0).setAttribute('transform', 'translate(' + obj.offset +',0)');
 		// --------------- moving gridlines ---------------
@@ -435,7 +468,7 @@ function TitleArea(graphManager){
 	this.graphManager = graphManager;
 	};
 $.extend(TitleArea.prototype,{
-	_draw : function(){
+	_draw : function _draw(){
 		this._group = this.svgManager.group("titleArea", 
 											{transform : 'translate(' + 
 															calculteRelativeValue(this.graphManager.regions['title'].x.fromX, this.svgManager._width())
@@ -455,7 +488,7 @@ function LegendArea(graphManager){
 	this.graphManager = graphManager;
 }
 $.extend(LegendArea.prototype,{
-	_draw: function(){
+	_draw: function _draw(){
 		this._group = this.svgManager.group("legendArea", {transform : 'translate(' +
 														calculteRelativeValue(this.graphManager.regions['legend'].x.fromX, this.svgManager._width())
 														+ ', '+
@@ -464,6 +497,11 @@ $.extend(LegendArea.prototype,{
 														fill: 'blue'});
 		this.svgManager.rect(this._group,0,0,this.svgManager._width()*this.graphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.graphManager._getRegionHeightRatio('legend'));
 		this.svgManager.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
+		this.svgManager.text(this._group,50,200, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'white', id:'time'});
+	},
+	// temporary
+	refreshTime : function refreshTime(){	
+		$('#time',this.svgManager.root()).text(this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes());
 	}
 });
 
@@ -483,7 +521,7 @@ function Axis(graphManager, ticks){
 	this._tittleSettings = {};
 }
 $.extend(Axis.prototype,{
-	title : function(title, settings){
+	title : function title(title, settings){
 		if(arguments.length == 0){
 			return this._title;
 		}
@@ -492,21 +530,21 @@ $.extend(Axis.prototype,{
 			this._tittleSettings = $.extend(this._tittleSettings, settings);
 		}
 	},
-	values : function(min, max){
+	values : function values(min, max){
 		if(arguments.length == 0){
 			return {min : this._minValue, max: this._maxValue};
 		}
 		this._maxValue = max;
 		this._minValue = min;
 	},
-	lables : function(labels, settings){
+	lables : function labels(labels, settings){
 		if(arguments.length == 0){
 			return this._labels
 		}
 		this._labels = labels;
 		this._labelsSettings = $.extend(this._labelsSettings , settings);
 	},
-	line: function(settings){
+	line: function line(settings){
 		if(typeof settings == object){
 			this._lineSettings = $.extend(this._lineSettings, settings);
 		}
@@ -532,9 +570,10 @@ $.extend(Axis.prototype,{
 // ## New approach to get immutable vars (closures!)
 function DataSeries(measurements, name){
 	var _measurements = measurements; // e.g. [ { value : 0.92, timestamp : 12435436 }];
+	var _lastMeasurementXpoint = 0;
 	var _maxValue = Math.max.apply(Math,_getValues(measurements));
 	var _name = name ;
-	var _dateOfLastUpdate = measurements.last().timestamp;;
+	var _dateOfLastUpdate = new Date(measurements.last().timestamp);
 	var _element;
 	//var _dateOfLastDrawedMeasure; // TODO to consider
 
@@ -567,10 +606,10 @@ function DataSeries(measurements, name){
 		/**
 		*
 		*/
-		update : function(measurements){
+		update : function update(measurements){
 			_measurements.extend(measurements);
-			console.log("last timestamp" + measurements.last().timestamp);
-			_dateOfLastUpdate = measurements.last().timestamp;
+			// LOG(arguments,'',"last timestamp" + measurements.last().timestamp);
+			_dateOfLastUpdate = new Date(measurements.last().timestamp);
 
 		},
 		/**
@@ -578,7 +617,7 @@ function DataSeries(measurements, name){
 		* based on number of measurements which came from server
 		* @param number of values that came from server
 		*/
-		getMeasurmentsToDraw : function(numberOfNewValuesToDraw){
+		getMeasurmentsToDraw : function getMeasurmentsToDraw(numberOfNewValuesToDraw){
 			if(numberOfNewValuesToDraw < 0){
 				return _measurements;
 			}
@@ -587,7 +626,7 @@ function DataSeries(measurements, name){
 		/**
 		*
 		*/
-		svgElement : function(el){
+		svgElement : function svgElement(el){
 			if(arguments.length == 0){
 				return _element;
 			}
@@ -596,20 +635,26 @@ function DataSeries(measurements, name){
 		/**
 		*
 		*/
-		getMaxValue: function(){
+		getMaxValue: function getMaxValue(){
 			return _maxValue;
 		},
 		/**
 		*
 		*/
-		getName : function(){
+		getName : function getName(){
 			return _name;
 		},
 		/**
 		*
 		*/
-		getDateoFLastMeasurment: function(){
+		getDateoFLastMeasurment: function getDateoFLastMeasurment(){
 			return _dateOfLastUpdate;
+		},
+		getLastMeasurmentXPoint :function getLastMeasurmentXPoint(){
+			return _lastMeasurementXpoint;
+		},
+		setLastMeasurmentXpoint : function setLastMeasurmentXpoint(x){
+			_lastMeasurementXpoint = x;
 		}
 	}
 }
@@ -659,14 +704,14 @@ $.extend(LineGraph.prototype, {
 	initialize: function(graphManager){
 		this.graphManager = graphManager;
 	},
-	draw: function(graphArea){
+	draw: function draw(graphArea){
 		var xScale = Math.round(graphArea._chartSVGSize[0]/this.graphManager.settings.ticks);
 		// graphArea._chartSVGSize[1] - topPadding  => to get padding at max value
 		var yScale = graphArea._chartSVGSize[1]/this.graphManager._getMaxValueFromSeries();
 		// TODO remove
-		// console.log("xScale = " + xScale);
-		// console.log("yScale = " + yScale);
-		// console.log("settings.ticks = " + this.graphManager.settings.ticks);
+		// LOG(arguments,'',"xScale = " + xScale);
+		// LOG(arguments,'',3"yScale = " + yScale);
+		// LOG(arguments,'',"settings.ticks = " + this.graphManager.settings.ticks);
 
 		graphArea._drawGridLines();
 		//this.drawSeries(graphArea,xScale,yScale);
@@ -675,28 +720,33 @@ $.extend(LineGraph.prototype, {
 		// this.graphManager._defineDefs();
 	},
 	// instead of using this._series use only new values to attach it to series line
-	drawSeries : function(graphArea, xScale, yScale, numberOfNewValuesToDrawInSeries){
+	drawSeries : function drawSeries(graphArea, xScale, yScale, numberOfNewValuesToDrawInSeries){
 		// TODO instead of using this.graphManager._series use newValues
 		var seriesLength = this.graphManager._series.length;
 		for (key in numberOfNewValuesToDrawInSeries){
-			console.log("Drawing " + key);
-			console.log("graphManager " + this.graphManager);
+			// LOG(arguments,'',"Drawing " + key);
+			// LOG(arguments,'',"graphManager " + this.graphManager);
 
 			var series = this.graphManager._getSeriesByName(key);
-			console.log("series = " + series);
-			console.log("series first from _series = " + this.graphManager._series[0]);
-			console.log("series length= " + seriesLength);
+			// LOG(arguments,'',"series = " + series);
+			// LOG(arguments,'',"series first from _series = " + this.graphManager._series[0]);
+			// LOG(arguments,'',"series length= " + seriesLength);
 			if(series != undefined){
 				
 				var measurementsToDraw = series.getMeasurmentsToDraw(numberOfNewValuesToDrawInSeries[key]);
 				var seriesSvgElement = series.svgElement();
-				console.log("seriesSvgElement " + seriesSvgElement);
+				// LOG(arguments,'',"seriesSvgElement " + seriesSvgElement);
 				if(seriesSvgElement == undefined){
-					console.log("Create element");
+					// LOG(arguments,'',"Create element");
 					// TODO calculate the x position for new series if such appear
-					var x = graphArea._chartSVGSize[0] + ((measurementsToDraw[0].timestamp - this.graphManager._currentTimelineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange);
-					console.log("x " + x);
-					console.log("yScale " + yScale);
+					//var x = graphArea._chartSVGSize[0] + ((measurementsToDraw[0].timestamp - this.graphManager._currentTimelineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange);
+					var timedifference = measurementsToDraw[0].timestamp.getTime() - this.graphManager._currentTimelineDate.getTime();
+
+					// it causes bugs..
+					x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
+
+					// LOG(arguments,'',"x " + x);
+					// LOG(arguments,'',"yScale " + yScale);
 					var tmpPath = graphArea.svgManager.createPath();
 					var element = { 'path' : tmpPath,
 									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,yScale), {fill: 'none', stroke: 'gray', strokeWidth: 1, markerMid: 'url(#circles)'}) };
@@ -705,15 +755,24 @@ $.extend(LineGraph.prototype, {
 				var element = series.svgElement();
 				for(var i=0, l = measurementsToDraw.length; i < l; i++){
 					var x = graphArea._chartSVGSize[0] + ((measurementsToDraw[i].timestamp - this.graphManager._currentTimelineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange);
-					// console.log("x = " + x);
+					// LOG(arguments,'old way',"x = " + x);
+					
+					var timedifference = measurementsToDraw[i].timestamp.getTime() - this.graphManager._currentTimelineDate.getTime();
+
+					// it causes bugs..
+					x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
+					// LOG(arguments,'new way',"x = " + x);
+
 					var y = graphArea._chartSVGSize[1] - (measurementsToDraw[i].value * yScale);
 					//element.path._path = element.path.line(x,y).path();
-					console.log("Element.path()" + i + " before = " + element.path.path());
+					// LOG(arguments,'before line()',"Element.path()" + i + " before = " + element.path.path());
 					element.path.line(x,y).path();
-					graphArea.svgManager.change(element.pathNode, {d: element.path.path()});
-					console.log("Element.path() after = " + element.path.path());
+					series.setLastMeasurmentXpoint(x);
+					// LOG(arguments,'after line',"Element.path() after = " + element.path.path());
 				}
-//				console.log(element.path._coords());
+				// LOG(arguments,'',element.path._coords());
+					graphArea.svgManager.change(element.pathNode, {d: element.path.path()});
+				series.svgElement(element);
 			}
 
 		}
@@ -760,7 +819,7 @@ $.extend(LineGraph.prototype, {
 // 			//}
 // 		}
 	},
-	drawAxes: function(graphArea){
+	drawAxes: function drawAxes(graphArea){
 		graphArea._drawAxis(this.graphManager._xAxis,'xAxis', 
 							graphArea._chartSVG.getAttribute('x'), 
 							graphArea._chartSVGSize[1]+calculteRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
@@ -773,16 +832,16 @@ $.extend(LineGraph.prototype, {
 							parseInt(graphArea._chartSVGSize[1])+parseInt(graphArea._chartSVG.getAttribute('y')));
 
 	},
-	addSeries: function(){
+	addSeries: function addSeries(){
 
 	},
 	// Area should be moved xScale * numberOfNewValuesToDraw px on each response with new values
 	
 	//TODO not working cause of translate should add new value of offset to current !
-	moveArea:function(offset1){
+	moveArea:function moveArea(offset1){
 		var offset = offset1*(-1);
 		var objId = "."+this.graphManager.settings.name+'graphArea';
-		console.log("graph  area class " + objId);
+		// LOG(arguments,'',"graph  area class " + objId);
 		 $(objId).get(0).setAttribute('transform', 'translate(' + offset +',0)');
 		var bg = $('#gridLines').get(0);
 		var matrix = [offset,0,0,0,offset,100];
@@ -792,25 +851,31 @@ $.extend(LineGraph.prototype, {
 	    bg.setAttribute('patternTransform', translate);
 
 	},
-	refreshGraph: function(graphArea,numberOfNewValuesToDraw){
-		console.log("_xAxisDateTimeRange " + this.graphManager._xAxisDateTimeRange);
-		var previousEndTimeLineDate = this.graphManager._getCurrentTimelineDate(); 
-		console.log("previousEndTimeLineDate = " + previousEndTimeLineDate);
-		this.graphManager._currentTimelineDate = this.graphManager._getDateOfLastUpdateFromAllSeries();
-		console.log("_currentTimelineDate = " + this.graphManager._getCurrentTimelineDate());
-		// value of x translate ( if is < 0 this mean that don't need to translate)
-		var xTranslate =  ((this.graphManager._currentTimelineDate - previousEndTimeLineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange); 
-		console.log("xTranslate " + xTranslate);
-		//graphArea._chartSVGSize[0] +((this.graphManager._currentTimelineDate- previousEndTimeLineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange);
-
+	refreshGraph: function refreshGraph	(graphArea,numberOfNewValuesToDraw){
 		var xScale = Math.round(graphArea._chartSVGSize[0]/this.graphManager.settings.ticks); // to remove ?
 		var yScale = graphArea._chartSVGSize[1]/this.graphManager._getMaxValueFromSeries();
-		console.log("## TODO ## when _getMaxValueFromSeries is 0 you get infinity on yScale ! " + this.graphManager._getMaxValueFromSeries());
+		// LOG(arguments,'',"## TODO ## when _getMaxValueFromSeries is 0 you get infinity on yScale ! " + this.graphManager._getMaxValueFromSeries());
+		
+		this.drawSeries(graphArea,xScale,yScale,numberOfNewValuesToDraw);// it was on the bottom
+		
+		// LOG(arguments,'',"_xAxisDateTimeRange " + this.graphManager._xAxisDateTimeRange);
+		var previousEndTimeLineDate = this.graphManager._getCurrentTimelineDate(); 
+		// LOG(arguments,'',"previousEndTimeLineDate = " + previousEndTimeLineDate);
+		// LOG(arguments,'before sign|'," _currentTimelineDate = " + this.graphManager._getCurrentTimelineDate());
+		this.graphManager._currentTimelineDate = this.graphManager._getDateOfLastUpdateFromAllSeries();
+		// LOG(arguments,'after sign'," _currentTimelineDate = " + this.graphManager._getCurrentTimelineDate());
+		// value of x translate ( if is < 0 this mean that don't need to translate)
+		var xTranslate =  ((this.graphManager._currentTimelineDate.getTime() - previousEndTimeLineDate.getTime())*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange); 
+		// LOG(arguments,'',"xTranslate " + xTranslate);
+		//graphArea._chartSVGSize[0] +((this.graphManager._currentTimelineDate- previousEndTimeLineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange);
+
+		//tempoarary
+		//refreshing time on legend area
+		this.graphManager._legendArea.refreshTime();
 		if(xTranslate > 0 ){
-			this.moveArea(xTranslate);
+		//	this.moveArea(xTranslate);
 		}
 				
-		this.drawSeries(graphArea,xScale,yScale,numberOfNewValuesToDraw);
 	}
 });
 //-------------------------------------------------------------------------
@@ -820,6 +885,7 @@ function TestData(numberOfNewValues, numberOfSeries, lastDate){
 		// 					{ value: 0.782, timestamp : 12:42},
 		// 					{ value: 0.832, timestamp : 12:43},
 		// 				],
+	LOG(arguments,'',"lastMeasureDate " + lastDate );
 	var obj = {};
 	for(var i=0; i < numberOfSeries; i++){
 		var name = "seria_"+i;
@@ -830,15 +896,20 @@ function TestData(numberOfNewValues, numberOfSeries, lastDate){
 				value : 0,
 				timestamp : 0
 			}
-			measure.value = Math.abs(Math.sin(j*100));
+			//  ----------- sin ------------------
+			//measure.value = Math.abs(Math.sin(j*100));
+			//  ---------- ranodom ----------------
+			measure.value = Math.random()*10;
 
-			measure.timestamp = new Date(lastDate).getTime() + j*1000;
-			//console.log("value : " + measure.value + " | " + " timestamp " + measure.timestamp);
-			// console.log("timestamp " + measure.timestamp.getDate());
+			measure.timestamp = new Date(lastDate.getTime() + j*60*1000);
+			LOG(arguments,'',"value : " + measure.value + " | " + " timestamp " + measure.timestamp);
+			// LOG(arguments,'',"timestamp " + measure.timestamp.getDate());
 			seria[name].push(measure);
 		}
 		$.extend(obj,seria);
-
+		console.log(" \n\n ##################################### data ###########################################");	
+		console.log(JSON.stringify(obj));
+		console.log(" \n\n ##################################### end data ###########################################");	
 	}
 	return obj;
 }
@@ -897,6 +968,11 @@ Object.size = function(obj) {
     }
     return size;
 };
+
+function LOG(args, description, message){
+	console.log("----------------------------");
+	console.log("## > "+args.callee.name + "| " + description + " | " + "\n\t " + message + "\n----------------------------");
+}
 
 /**
 * extend(values)

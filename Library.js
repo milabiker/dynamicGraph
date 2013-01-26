@@ -1,9 +1,13 @@
 $(function(){
 	//var svg = $('div#svg1').SVGDynamicGraph(600,400);	
-	var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200).draw();
+	//var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200).draw();
 	//var svgline = $('div#svgLineGraph').SVGDynamicGraph_1.LineGraph.initialize(200,200).show();
-	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',700,500);
-	
+	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',800,300);
+	$("button.clear").click(function(){
+		svgline.clearUpdate();
+	});$("button.activate").click(function(){
+		svgline.activateUpdate();
+	});
 	svgline.draw();
 });
 
