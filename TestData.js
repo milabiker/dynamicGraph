@@ -2,7 +2,7 @@
 var database = {};
 var generatorTime = 100;
 var counterForSin = 1;
-var timer = setTimeout(generator,generatorTime,'seria_1');
+var timer = setTimeout(generator,0,'seria_1');
 
 function generator(seriesName){
 	//console.log("generator on " + seriesName);
@@ -21,7 +21,7 @@ function generateMeasure(){
 	// -------- random -------------
 	//tmp.value = Math.random()*10;
 	// -------- sinus --------------
-	tmp.value = Math.abs(Math.sin(counterForSin*100));
+	tmp.value = Math.abs(Math.sin(counterForSin/10));
 	counterForSin++;
 
 	tmp.timestamp = new Date().getTime();
@@ -34,18 +34,26 @@ function generateMeasure(){
 * Function which returns proper measurements based on date
 */
 function getData(dateOfLastMesaurement){
-	//console.log("getData !!!-------------");
+	var time = new Date(dateOfLastMesaurement);
+	// console.log("getData from " + time.getHours() + " : " + time.getMinutes() + " : " + time.getMinutes());
 	var toReturn = {};
 	for(key in database){
-		for(var i=database[key].length-1; i > 0; i--){
-	//		console.log("getData iterate " + i);
-			if( database[key][i].timestamp <= dateOfLastMesaurement ){
-				var tmpObj = {};
-				tmpObj[key] = database[key].slice(i);
-				$.extend(toReturn,tmpObj);
+		//console.log("database length = " + database[key].length);
+		
+		var i = database[key].length-1;
+		while(database[key][i].timestamp > dateOfLastMesaurement ){
+			// console.log("i = " + i);
+			i--;
+			if(i <= 0){
 				break;
 			}
 		}
+		var tmpObj = {};
+		var tmpArray = database[key].slice(i);
+		// console.log("data length = " + tmpArray.length); 
+		tmpObj[key] = tmpArray;
+
+		$.extend(toReturn,tmpObj);
 	}
 	return toReturn;
 }
