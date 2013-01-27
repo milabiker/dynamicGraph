@@ -1,12 +1,15 @@
 $(function(){
-	//var svg = $('div#svg1').SVGDynamicGraph(600,400);	
-	//var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200).draw();
-	//var svgline = $('div#svgLineGraph').SVGDynamicGraph_1.LineGraph.initialize(200,200).show();
-	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',800,300);
+	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',800,300, {legend: true, timePeriod: 1000*30});
 	$("button.clear").click(function(){
 		svgline.clearUpdate();
 	});$("button.activate").click(function(){
 		svgline.activateUpdate();
+	});
+	var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200).draw();
+	$("button.clear1").click(function(){
+		svg2.clearUpdate();
+	});$("button.activate1").click(function(){
+		svg2.activateUpdate();
 	});
 	svgline.draw();
 });

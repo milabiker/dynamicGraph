@@ -91,7 +91,8 @@
 //
 (function($){
 	$.fn.SVGDynamicGraph_1 = function(chartId, width, height, settings){
-		var charttype = CHARTTYPES[chartId];
+
+		var charttype = jQuery.extend(true, {}, CHARTTYPES[chartId]);
 		if(charttype){
 			console.log("LineGraph...");
 			this.graphManager = new GraphManager(this, charttype, width,height, settings);
@@ -120,9 +121,11 @@ function GraphManager(element, charttype, width, height, settings){
 		draw_axis: true,
 		label_rotation: 90,
 		label_size:10,
+		timeLabelsTick: 1000, // e.g. every 1 min on graph
 		ticks : 10, // TODO change to time (e.g from last 2h)
 		timePeriod : 1000*10, // (in milis)
-		name : $(element).attr('id')
+		name : $(element).attr('id'),
+		legend : false
 	}
 	//===================
 	// attaching svg 
@@ -133,8 +136,11 @@ function GraphManager(element, charttype, width, height, settings){
 	this.svgManager = mysvg;
 	this.charttype = charttype;
 	this.settings = $.extend({}, this.defaultSettings, settings);
+
+	LOG(arguments,'',"NAME = " + this.settings.name);
+	
 	// TODO------- set up legend or title visible (temporary) ---------------------
-	this.isLegend = true;
+	this.isLegend = this.settings.legend;
 	this.isTitle = true;
 	//-----------------
 	this._series = [];
@@ -205,7 +211,7 @@ $.extend(GraphManager.prototype,{
 		
 		var numberOfNewValuesToDrawInSeries = {};
 		for( key in dataSeries){
-			LOG(arguments,'',"dataSeries key = " + key);
+			// LOG(arguments,'',"dataSeries key = " + key);
 			if(dataSeries.hasOwnProperty(key)){
 				var series = this._getSeriesByName(key);
 
@@ -236,6 +242,7 @@ $.extend(GraphManager.prototype,{
 		// var numberOfNewValues = inst._addSeries(TestData(5,1, new Date(inst._currentTimelineDate.getTime())));
 		
 		// ----- gets new values from generator
+		LOG(arguments,''," NAME = " + inst.settings.name);
 		if(inst.firstTime){
 			LOG(arguments,'',"First time");
 			var numberOfNewValues = inst._addSeries(getData(inst._currentTimelineDate.getTime()-inst._xAxisDateTimeRange));
@@ -245,9 +252,10 @@ $.extend(GraphManager.prototype,{
 		}
 		// LOG(arguments,'',"numberOfNewValues = "+ numberOfNewValues);
 		// --------------------------------------------
+		LOG(arguments,''," NAME = " +inst.settings.name);
 		inst.charttype.refreshGraph(inst._graphArea,numberOfNewValues);
 		// LOG(arguments,'passed to callback',"_currentTimelineDate = " + inst._currentTimelineDate);
-		inst._timerID = setTimeout(inst.callback,10,inst);
+		inst._timerID = setTimeout(inst.callback,1000,inst);
 		// LOG(arguments,'',"callback !!!");
 		if(!inst.isUpdateActive){
 			console.log("INST timer id " + inst._timerID);
@@ -389,7 +397,7 @@ function GraphArea(graphManager){
 };
 $.extend(GraphArea.prototype,{
 	_draw: function draw(){
-		this._group = this.svgManager.group(this.svgManager._wrapper, "graphRegion", {class_: "graphRegion", transform: 'scale(1,1)'});
+		this._group = this.svgManager.group(this.svgManager._wrapper, "graphRegion"+this.graphManager.settings.name, {class_: "graphRegion", transform: 'scale(1,1)'});
 	
 		// --- changing group position if legend or title are shown
 		this.svgManager.change(this._group, {transform:'scale(1,1) translate('+ 
@@ -509,7 +517,7 @@ function LegendArea(graphManager){
 }
 $.extend(LegendArea.prototype,{
 	_draw: function _draw(){
-		this._group = this.svgManager.group("legendArea", {transform : 'translate(' +
+		this._group = this.svgManager.group("legendArea"+this.graphManager.settings.name, {transform : 'translate(' +
 														calculteRelativeValue(this.graphManager.regions['legend'].x.fromX, this.svgManager._width())
 														+ ', '+
 														calculteRelativeValue(this.graphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
@@ -517,7 +525,7 @@ $.extend(LegendArea.prototype,{
 														fill: 'blue'});
 		this.svgManager.rect(this._group,0,0,this.svgManager._width()*this.graphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.graphManager._getRegionHeightRatio('legend'));
 		this.svgManager.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
-		this.svgManager.text(this._group,50,200, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'white', id:'time'});
+		this.svgManager.text(this._group,10,200, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'white', id:'time'});
 	},
 	// temporary
 	refreshTime : function refreshTime(){	
@@ -612,7 +620,7 @@ function DataSeries(measurements, name){
 		*/
 		update : function update(measurements){
 			_measurements.extend(measurements);
-			LOG(arguments,'',"last timestamp " + (new Date(measurements.last().timestamp)));
+			// LOG(arguments,'',"last timestamp " + (new Date(measurements.last().timestamp)));
 			_dateOfLastUpdate = new Date(measurements.last().timestamp);
 
 		},
@@ -710,13 +718,15 @@ $.extend(LineGraph.prototype, {
 					var timedifference = measurementsToDraw[0].timestamp - this.graphManager._currentTimelineDate.getTime();
 
 					series.setLastMeasurmentXpoint(graphArea._chartSVGSize[0] - graphArea._chartSVGSize[0]/100 ); //set last valute point to svg width - padding 1/100 width
-					LOG(arguments,'',"_chartSVGSize[0] = " + series.getLastMeasurmentXPoint());
-					LOG(arguments,'',"yScale = " + yScale);
-					x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
+					// LOG(arguments,'',"_chartSVGSize[0] = " + series.getLastMeasurmentXPoint());
+					// LOG(arguments,'',"yScale = " + yScale);
+					var x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
 					LOG(arguments,'',"move("+x+","+measurementsToDraw[0].value*yScale+");");
 
 					// LOG(arguments,'',"x " + x);
 					// LOG(arguments,'',"yScale " + yScale);
+					LOG(arguments,'',"_graphAreaGroup name = " + graphArea._graphAreaGroup.getAttribute('class'));
+					LOG(arguments,''," NAME = " + this.graphManager.settings.name);
 					var tmpPath = graphArea.svgManager.createPath();
 					var element = { 'path' : tmpPath,
 									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,measurementsToDraw[0].value*yScale), {fill: 'none', stroke: 'gray', strokeWidth: 1, markerMid: 'url(#circles)'}) };
@@ -785,17 +795,17 @@ $.extend(LineGraph.prototype, {
 	refreshGraph: function refreshGraph	(graphArea,numberOfNewValuesToDraw){
 		var xScale = Math.round(graphArea._chartSVGSize[0]/this.graphManager.settings.ticks); // to remove ?
 		var yScale = graphArea._chartSVGSize[1]/this.graphManager._getMaxValueFromSeries();
-		LOG(arguments,'',"_getMaxValueFromSeries = " + this.graphManager._getMaxValueFromSeries());
+		// LOG(arguments,'',"_getMaxValueFromSeries = " + this.graphManager._getMaxValueFromSeries());
 		// LOG(arguments,'',"## TODO ## when _getMaxValueFromSeries is 0 you get infinity on yScale ! " + this.graphManager._getMaxValueFromSeries());
-		
+		LOG(arguments,''," NAME = " + this.graphManager.settings.name);
 		this.drawSeries(graphArea,xScale,yScale,numberOfNewValuesToDraw);// it was on the bottom
 		
 		// LOG(arguments,'',"_xAxisDateTimeRange " + this.graphManager._xAxisDateTimeRange);
 		var previousEndTimeLineDate = this.graphManager._getCurrentTimelineDate(); 
-		LOG(arguments,'',"previousEndTimeLineDate = " + previousEndTimeLineDate);
+		// LOG(arguments,'',"previousEndTimeLineDate = " + previousEndTimeLineDate);
 		// LOG(arguments,'before sign|'," _currentTimelineDate = " + this.graphManager._getCurrentTimelineDate());
 		this.graphManager._currentTimelineDate = this.graphManager._getDateOfLastUpdateFromAllSeries();
-		LOG(arguments,'after sign'," _currentTimelineDate = " + this.graphManager._getCurrentTimelineDate());
+		// LOG(arguments,'after sign'," _currentTimelineDate = " + this.graphManager._getCurrentTimelineDate());
 		// value of x translate ( if is < 0 this mean that don't need to translate)
 
 		//TODO temporary solution with xTranslate !!!!
@@ -808,7 +818,10 @@ $.extend(LineGraph.prototype, {
 
 		//tempoarary
 		//refreshing time on legend area
-		this.graphManager._legendArea.refreshTime();
+		if(this.graphManager._legendArea){
+			this.graphManager._legendArea.refreshTime();
+		}
+		
 		if(this.xTranslate > 0 ){
 			this.moveArea(this.xTranslate);
 		}
