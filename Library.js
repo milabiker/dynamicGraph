@@ -5,12 +5,12 @@ $(function(){
 	});$("button.activate").click(function(){
 		svgline.activateUpdate();
 	});
-	var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200).draw();
-	$("button.clear1").click(function(){
-		svg2.clearUpdate();
-	});$("button.activate1").click(function(){
-		svg2.activateUpdate();
-	});
+	// var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200).draw();
+	// $("button.clear1").click(function(){
+	// 	svg2.clearUpdate();
+	// });$("button.activate1").click(function(){
+	// 	svg2.activateUpdate();
+	// });
 	svgline.draw();
 });
 
