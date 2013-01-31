@@ -1,5 +1,5 @@
 $(function(){
-	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',800,300, {legend: true, title:false, timePeriod: 1000*40, timeLabelsTick : 1000*12, marker: 'circle'});
+	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',800,300, {legend: false, title:true,titleText: "Dynamic graph", yAxis: true, timePeriod: 1000*40, timeLabelsTick : 1000*12, marker: 'circle'});
 	$("button.clear").click(function(){
 		svgline.clearUpdate();
 	});$("button.activate").click(function(){
@@ -11,6 +11,7 @@ $(function(){
 	});$("button.activate1").click(function(){
 		svg2.activateUpdate();
 	});
+//	svgline.setCallback(function(){});
 	svgline.draw();
 });
 

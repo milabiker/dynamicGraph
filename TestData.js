@@ -24,7 +24,12 @@ function generateMeasure(){
 	
 	// -------- sinus --------------
 	// tmp.value = Math.abs(Math.sin(counterForSin/10));
-	tmp.value = Math.sin(counterForSin/10);
+	tmp.value = Math.sin(counterForSin/10)*10;
+	// if(counterForSin > 100){
+	// 	tmp.value = Math.sin(counterForSin/10)*10;
+	// }else{
+	// 	tmp.value = Math.sin(counterForSin/10);
+	// }
 	
 	// -------- number ------------
 	// tmp.value = counterForSin;

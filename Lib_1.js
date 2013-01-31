@@ -124,7 +124,9 @@ function GraphManager(element, charttype, width, height, settings){
 		timeLabelsTick: 1000*10, // e.g. every 1 min on graph
 		timePeriod : 1000*50, // (in milis)
 		name : $(element).attr('id'),
-		legend : false
+		legend : false,
+		xAxis : true,
+		titleText : 'Chart title'
 	}
 	//===================
 	// attaching svg 
@@ -154,6 +156,14 @@ function GraphManager(element, charttype, width, height, settings){
 	// this._xAxis = new Axis(this,this.settings.ticks);
 	this._xAxis = new TimeAxis(this);
 	this._yAxis = new Axis(this,5);
+	// if value is < 0 it means 100% of svg size if  value is = 0 then  relative value 
+	this.regionsSize = {
+		titleArea : { width : -1, height : 30},
+		legendArea : { width : -1, height: -1},
+		graphArea : {width : 0, height : 0},
+		yAxisArea : {width : 60, height : 0},
+		xAxisArea : {width : this.svgManager._width() - 50, height : 35}
+		};
 	this.regions = {
 		'legend':{ x : { fromX: 0.0, toX: 0.2}, y : { fromY: 0.0, toY: 1.0 } },
 		'title': { x : { fromX: 0.2, toX: 1.0}, y : { fromY: 0.0, toY: 0.1 } },
@@ -186,6 +196,7 @@ $.extend(GraphManager.prototype,{
 		}
 		this._graphArea._draw();
 		/*======= invoke chart drawing ==========*/
+
 		this.activateUpdate();//this.callback();
 		this.charttype.draw(this._graphArea);
 
@@ -194,9 +205,9 @@ $.extend(GraphManager.prototype,{
 	},
 	_defineDefs : function _defineDefs() {
 		this.defs = this.svgManager.defs(this.settings.name + '_defs');
-		var gridlines = this.svgManager.pattern(this.defs, "gridLines", 0,0,200,100, 0,0,100,50, {patternUnits: 'userSpaceOnUse'});
-		var line1 = this.svgManager.line(gridlines, 0,0,100,0,{strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1});
-		var line2 = this.svgManager.line(gridlines, 0,0,0,100,{strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1});
+		var gridlines = this.svgManager.pattern(this.defs, "gridLines", 0,0,200,100, 0,0,100,50, { class_: "gridlines", patternUnits: 'userSpaceOnUse'});
+		var line1 = this.svgManager.line(gridlines, 0,0,100,0,{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1});
+		var line2 = this.svgManager.line(gridlines, 0,0,0,100,{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1});
 
 		var marker = this.svgManager.marker(this.defs, 'circle', 8, 8, 15, 15, 'auto',{ markerUnits:"strokeWidth"});
 		var markerCircle = this.svgManager.circle(marker, 8,8,2, {fill:"white", stroke:'red', strokeWidth:'1'});
@@ -380,6 +391,7 @@ function GraphArea(graphManager){
 	this.padding = 0.1;
 	this.paddingLeft=0.1;
 	this.paddingRight = 0.02;
+	this.paddingRightPx = 10;
 	this.paddingBottom = 0.15;
 	this.paddingTop = 0.01;
 	this.graphPadding = 0.1;
@@ -398,34 +410,55 @@ $.extend(GraphArea.prototype,{
 		// 						this.graphManager.isLegend == true ? this.svgManager._width()*(this.graphManager.regions.graph.x.toX - this.graphManager.regions.graph.x.fromX) - (this.svgManager._width() * this.paddingRight) : this.svgManager._width() - calculateRelativeValue(this.svgManager._width(), this.paddingRight),
 		// 						this.graphManager.isTitle == true ? this.svgManager._height()*(this.graphManager.regions.graph.y.toY - this.graphManager.regions.graph.y.fromY) - (this.svgManager._height() * this.paddingTop) : this.svgManager._height()) ;
 
-		this._group = this.svgManager.group(this.svgManager._wrapper, "graphRegion"+this.graphManager.settings.name, {class_: "graphRegion", transform: 'scale(1,1)'});
+		// this._group = this.svgManager.group(this.svgManager._wrapper, "graphRegion"+this.graphManager.settings.name, {class_: "graphRegion", transform: 'scale(1,1)'});
 		
-		// --- changing group position if legend or title are shown
-		this.svgManager.change(this._group, {transform:'scale(1,1) translate('+ 
-						(this.graphManager.isLegend == true ? calculateRelativeValue(this.graphManager.regions.graph.x.fromX,this.svgManager._width()) : 0) 
-						+','+ 
-						(this.graphManager.isTitle == true ? calculateRelativeValue(this.graphManager.regions.graph.y.fromY,this.svgManager._height()) : 0) 
-						+')'});
+		// // --- changing group position if legend or title are shown
+		// this.svgManager.change(this._group, {transform:'scale(1,1) translate('+ 
+		// 				(this.graphManager.isLegend == true ? calculateRelativeValue(this.graphManager.regions.graph.x.fromX,this.svgManager._width()) : 0) 
+		// 				+','+ 
+		// 				(this.graphManager.isTitle == true ? calculateRelativeValue(this.graphManager.regions.graph.y.fromY,this.svgManager._height()) : 0) 
+		// 				+')'});
 
-		// [width,height]
-		this._chartSVGSize = calculateElementRelativeSize(this.svgManager._width(),
-														this.svgManager._height(), 
-														 (this.graphManager.isLegend == true ? this.graphManager._getRegionWidthRatio('graph') : 0), 
-														 (this.graphManager.isTitle == true ? this.graphManager._getRegionHeightRatio('graph') : 0),
-														[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
+		// // [width,height]
+		// this._chartSVGSize = calculateElementRelativeSize(this.svgManager._width(),
+		// 												this.svgManager._height(), 
+		// 												 (this.graphManager.isLegend == true ? this.graphManager._getRegionWidthRatio('graph') : 0), 
+		// 												 (this.graphManager.isTitle == true ? this.graphManager._getRegionHeightRatio('graph') : 0),
+		// 												[this.paddingLeft, 0, this.paddingRight, this.paddingBottom]);
 		
-		//alert(this._chartSVGSize); 	
-		this._chartSVG = this.svgManager.svg(this._group,
-											this.svgManager._width()*this.paddingLeft,
-											this.svgManager._width()*this.paddingTop, 
-											this._chartSVGSize[0],
-											this._chartSVGSize[1]);
+		// //alert(this._chartSVGSize); 	
+		// this._chartSVG = this.svgManager.svg(this._group,
+		// 									this.svgManager._width()*this.paddingLeft,
+		// 									this.svgManager._width()*this.paddingTop, 
+		// 									this._chartSVGSize.width,
+		// 									this._chartSVGSize.height);
 
+		// this._graphAreaGroup = this.svgManager.group(this._chartSVG, {class_: this.graphManager.settings.name+'graphArea'});
+		var titleEnabled = this.graphManager.isTitle;
+		var yAxisEnabled = this.graphManager.settings.yAxis;
+		var xAxisEnabled = this.graphManager.settings.xAxis;
+		var titleHeight = this.graphManager.regionsSize.titleArea.height;
+		var yAxisWidth = this.graphManager.regionsSize.yAxisArea.width;
+		var xAxisHeight = this.graphManager.regionsSize.xAxisArea.height;
+
+		var translate = "translate( 0," + (titleEnabled ? titleHeight : 0) + ")";
+		this._group = this.svgManager.group(null, {transform : translate, class_ : this.graphManager.settings.name+'graphRegion'});
+
+		var tmpChartSvgHeight = this.svgManager._height() - (titleEnabled ? titleHeight : 0) - (xAxisEnabled ? xAxisHeight : 0); 
+		
+		this._chartSVGSize = {width : yAxisEnabled ? this.svgManager._width() - yAxisWidth - this.paddingRightPx /*as padding*/: this.svgManager._width() - 20/*as padding*/,
+								height : tmpChartSvgHeight};
+		this._chartSVG = this.svgManager.svg(this._group, 
+									yAxisEnabled ? yAxisWidth : 10/*as padding*/,
+									0/*as padding */,
+									this._chartSVGSize.width,
+									this._chartSVGSize.height );
 		this._graphAreaGroup = this.svgManager.group(this._chartSVG, {class_: this.graphManager.settings.name+'graphArea'});
+
 
 	},
 	_drawGridLines : function draw(){
-		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize[0],this._chartSVGSize[1],{class_: "graphBackground",fill: 'none', fill: 'url(#gridLines)'});
+		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize.width,this._chartSVGSize.height,{class_: "graphBackground",fill: 'none', fill: 'url(#gridLines)'});
 		
 	},
 	_drawAxis: function _drawAxis(axis,id, x1,y1,x2,y2, dateOfLastUpdate){
@@ -441,6 +474,7 @@ $.extend(GraphArea.prototype,{
 			var axisLength = y2 - y1;
 			var offset = Math.round(axisLength/axis._ticks);
 			var counter = 0;
+			this.svgManager.text(gline,20, 100, "A x i s", {stroke:'none', transform: 'rotate(-90,20,100)', textAnchor : 'middle'});
 			while(counter < axis._ticks){
 				lineOffset = counter*offset;
 				this.svgManager.line(gline, x1-len, y2 - lineOffset, x1, y2 - lineOffset);
@@ -481,19 +515,25 @@ $.extend(GraphArea.prototype,{
 function TitleArea(graphManager){
 	this.svgManager = graphManager.svgManager;
 	this.graphManager = graphManager;
+	this.settings = { fontSize : 17,
+					paddingTop : 5,
+					verticalPos : this.svgManager._width()/2,
+					textAnchor : 'middle'}
 	};
 $.extend(TitleArea.prototype,{
 	_draw : function _draw(){
-		this._group = this.svgManager.group("titleArea", 
-											{transform : 'translate(' + 
-															calculateRelativeValue(this.graphManager.regions['title'].x.fromX, this.svgManager._width())
-															+ ', '+
-															calculateRelativeValue(this.graphManager.regions['title'].y.fromY, this.svgManager._height())+')',
-															class_: "titleArea", 
-															fill: 'red',stroke: 'none'});
-		var size = calculateElementRelativeSize(this.svgManager._width(), this.svgManager._height(), this.graphManager._getRegionWidthRatio('title'), this.graphManager._getRegionHeightRatio('title')); 
-		this.svgManager.rect(this._group,0,0,size[0],size[1]);
-		this.svgManager.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 		
+		// this._group = this.svgManager.group("titleArea", 
+		// 									{transform : 'translate(' + 
+		// 													calculateRelativeValue(this.graphManager.regions['title'].x.fromX, this.svgManager._width())
+		// 													+ ', '+
+		// 													calculateRelativeValue(this.graphManager.regions['title'].y.fromY, this.svgManager._height())+')',
+		// 													class_: "titleArea", 
+		// 													fill: 'red',stroke: 'none'});
+		// var size = calculateElementRelativeSize(this.svgManager._width(), this.svgManager._height(), this.graphManager._getRegionWidthRatio('title'), this.graphManager._getRegionHeightRatio('title')); 
+		// this.svgManager.rect(this._group,0,0,size[0],size[1]);
+		// this.svgManager.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'});
+		this._group = this.svgManager.group(null, {class_: "titleArea"});
+		this.svgManager.text(this._group, this.settings.verticalPos, this.settings.paddingTop + this.settings.fontSize, this.graphManager.settings.titleText , {fontFamily: 'Verdana', fontSize : this.settings.fontSize, stroke:'none',textAnchor : 'middle'}); 		
 	}
 });
 //=======================================================================================================================
@@ -504,19 +544,22 @@ function LegendArea(graphManager){
 }
 $.extend(LegendArea.prototype,{
 	_draw: function _draw(){
-		this._group = this.svgManager.group("legendArea"+this.graphManager.settings.name, {transform : 'translate(' +
-														calculateRelativeValue(this.graphManager.regions['legend'].x.fromX, this.svgManager._width())
-														+ ', '+
-														calculateRelativeValue(this.graphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
-														class_: "legendArea",
-														fill: 'blue'});
-		this.svgManager.rect(this._group,0,0,this.svgManager._width()*this.graphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.graphManager._getRegionHeightRatio('legend'));
-		this.svgManager.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
-		this.svgManager.text(this._group,10,200, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'white', id:'time'});
+		// this._group = this.svgManager.group("legendArea"+this.graphManager.settings.name, {transform : 'translate(' +
+		// 												calculateRelativeValue(this.graphManager.regions['legend'].x.fromX, this.svgManager._width())
+		// 												+ ', '+
+		// 												calculateRelativeValue(this.graphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
+		// 												class_: "legendArea",
+		// 												fill: 'blue'});
+		// this.svgManager.rect(this._group,0,0,this.svgManager._width()*this.graphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.graphManager._getRegionHeightRatio('legend'));
+		// this.svgManager.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
+		// this.svgManager.text(this._group,10,200, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'white', id:'time'});
+		this._group = this.svgManager.group(null,{ transform : 'translate( 0,' + (this.svgManager._height() - 25) + ')', class_ : 'legendArea', fill : 'blue'});
+		this.svgManager.text(this._group, 10, 10, "Legend ", { stroke : 'none', fontSize : 15});
+		this.svgManager.text(this._group,10,20, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'black', class_:'time'});
 	},
 	// temporary
 	refreshTime : function refreshTime(){	
-		$('#time',this.svgManager.root()).text(this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes() + " : " + this.graphManager._getCurrentTimelineDate().getSeconds());
+		$('.time',this.svgManager.root()).text(this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes() + " : " + this.graphManager._getCurrentTimelineDate().getSeconds());
 	}
 });
 
@@ -573,18 +616,16 @@ function TimeAxis(graphManager){
 	var _labelsGroup;
 	var _labelsNodes = [];
 	var _labelsSettings = {strokeWidth: 1, textAnchor: 'middle', fontSize: 12, stroke:'none', fill:'blue'};
-	var _lineSettings = {class_: 'axis',stroke:'red', scaleSize : 10};
+	var _lineSettings = {class_: 'axis',stroke:'gray', scaleSize : 5};
 	return {
 		drawTimeAxis : function drawTimeAxis(graphArea,x1,y1,x2,y2,settings){
-			var x1 = parseInt(x1);
-			var y1 = parseInt(y1);
-			var x2 = parseInt(x2);
-			var y2 = parseInt(y2);
-			_axisGroup = graphManager.svgManager.group(graphManager._graphArea._group);
-			_labelsGroup = graphManager.svgManager.group(graphManager._graphArea._group,{class_ : "time"});
+			_axisGroup = graphManager.svgManager.group(graphManager._graphArea._group, 'timeAxis', {class_ : "timeAxis"});
+			_labelsGroup = graphManager.svgManager.group(_axisGroup);
+			
 			graphManager.svgManager.line(_axisGroup,x1,y1,x2,y2, $.extend({},_lineSettings, settings));
+			
 			var numberOfLabels = Math.ceil(graphManager._xAxisDateTimeRange/graphManager.settings.timeLabelsTick);
-			var offset = graphArea._chartSVGSize[0]/ numberOfLabels;
+			var offset = graphArea._chartSVGSize.width/ numberOfLabels;
 			LOG(arguments,'',"numberOfLabels = " + numberOfLabels + " | offset = " + offset);
 			// var clip =graphManager.svgManager.clipPath(_labelsGroup, "axisclipPath");
 			// graphManager.svgManager.rect(clip, x1, y1, x2)
@@ -592,7 +633,8 @@ function TimeAxis(graphManager){
 				var lineOffset = numberOfLabels*offset;
 				LOG(arguments,"","draw divisor | lineOffset = " + lineOffset);
 				graphManager.svgManager.line(_labelsGroup, x1 + lineOffset, y1, x1 + lineOffset, y1+_lineSettings.scaleSize, {strokeWidth: 1});
-				_labelsNodes.push(graphManager.svgManager.text(_labelsGroup, x1 + lineOffset, y1 + _lineSettings.scaleSize + _labelsSettings.fontSize, "label", _labelsSettings ));
+				var labelText = graphManager._currentTimelineDate.getHours() + " : " + graphManager._currentTimelineDate.getMinutes() + " : " + graphManager._currentTimelineDate.getSeconds();
+				_labelsNodes.push(graphManager.svgManager.text(_labelsGroup, x1 + lineOffset, y1 + _lineSettings.scaleSize + _labelsSettings.fontSize, labelText , _labelsSettings ));
 				numberOfLabels--;
 			}
 		},
@@ -739,9 +781,9 @@ $.extend(LineGraph.prototype, {
 				var isFirstValueOfSeries;
 				if(seriesSvgElement == undefined){
 					var timedifference = measurementsToDraw[0].timestamp - this.graphManager._currentTimelineDate.getTime();
-					series.setLastMeasurmentXpoint(graphArea._chartSVGSize[0] - graphArea._chartSVGSize[0]/100 ); //set last valute point to svg width - padding 1/100 width
-					var x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
-					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize[1],maxValue, measurementsToDraw[0].value,graphArea.graphPadding);
+					series.setLastMeasurmentXpoint(graphArea._chartSVGSize.width - graphArea._chartSVGSize.width/100 ); //set last valute point to svg width - padding 1/100 width
+					var x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize.width/this.graphManager._xAxisDateTimeRange;
+					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize.height,maxValue, measurementsToDraw[0].value,graphArea.graphPadding);
 					var tmpPath = graphArea.svgManager.createPath();
 					var element = { 'path' : tmpPath,
 									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y), {fill: 'none', stroke: 'gray', strokeWidth: 1, markerMid: this.graphManager.settings.marker ? 'url(#'+this.graphManager.settings.marker+ ')' : 'none'}) };
@@ -754,8 +796,8 @@ $.extend(LineGraph.prototype, {
 				var x;
 				for(var i= isFirstValueOfSeries ? 1 : 0, l = measurementsToDraw.length; i < l; i++){
 					var timedifference = measurementsToDraw[i].timestamp - this.graphManager._currentTimelineDate.getTime();
-					x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
-					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize[1],maxValue,measurementsToDraw[i].value,graphArea.graphPadding);
+					x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize.width/this.graphManager._xAxisDateTimeRange;
+					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize.height,maxValue,measurementsToDraw[i].value,graphArea.graphPadding);
 					// LOG(arguments,"","y = " + y);
 					element.path.line(x,y).path();
 				}
@@ -770,19 +812,25 @@ $.extend(LineGraph.prototype, {
 	drawAxes: function drawAxes(graphArea){
 		// graphArea._drawAxis(this.graphManager._xAxis,'xAxis', 
 		// 					graphArea._chartSVG.getAttribute('x'), 
-		// 					graphArea._chartSVGSize[1]+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
-		// 					parseInt(graphArea._chartSVGSize[0])+parseInt(graphArea._chartSVG.getAttribute('x')), 
-		// 					graphArea._chartSVGSize[1]+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
+		// 					graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
+		// 					parseInt(graphArea._chartSVGSize.width)+parseInt(graphArea._chartSVG.getAttribute('x')), 
+		// 					graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
 		this.graphManager._xAxis.drawTimeAxis(graphArea, 
-							graphArea._chartSVG.getAttribute('x'),
-							graphArea._chartSVGSize[1]+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
-							parseInt(graphArea._chartSVGSize[0])+parseInt(graphArea._chartSVG.getAttribute('x')), 
-							graphArea._chartSVGSize[1]+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
+							parseInt(graphArea._chartSVG.getAttribute('x')),
+							// graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
+							// parseInt(graphArea._chartSVGSize.width)+parseInt(graphArea._chartSVG.getAttribute('x')), 
+							// graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
+							graphArea._chartSVGSize.height,
+							graphArea._chartSVGSize.width + parseInt(graphArea._chartSVG.getAttribute('x')),
+							graphArea._chartSVGSize.height
+
+							);
+		if(this.graphManager.settings.yAxis)
 		graphArea._drawAxis(this.graphManager._yAxis,'yAxis', 
 							graphArea._chartSVG.getAttribute('x'), 
 							graphArea._chartSVG.getAttribute('y'),
 							graphArea._chartSVG.getAttribute('x'), 
-							parseInt(graphArea._chartSVGSize[1])+parseInt(graphArea._chartSVG.getAttribute('y')));
+							parseInt(graphArea._chartSVGSize.height)+parseInt(graphArea._chartSVG.getAttribute('y')));
 
 	},
 	addSeries: function addSeries(){
@@ -807,12 +855,12 @@ $.extend(LineGraph.prototype, {
 	},
 	refreshGraph: function refreshGraph	(graphArea,numberOfNewValuesToDraw){
 		
-		var shouldUpscale = this.graphManager.calculateScale(graphArea._chartSVGSize[1], graphArea.graphPadding);
+		var shouldUpscale = this.graphManager.calculateScale(graphArea._chartSVGSize.height, graphArea.graphPadding);
 		this.drawSeries(graphArea,this.graphManager.yScale,numberOfNewValuesToDraw);// it was on the bottom
 
 		if(shouldUpscale){
 			// LOG(arguments,"","UPSCALE ! ");
-			graphArea.upscale(this.graphManager._series, graphArea._chartSVGSize[1], this.graphManager._getMaxValueFromSeries());
+			graphArea.upscale(this.graphManager._series, graphArea._chartSVGSize.height, this.graphManager._getMaxValueFromSeries());
 		}
 		
 		var previousEndTimeLineDate = this.graphManager._getCurrentTimelineDate(); 
@@ -822,7 +870,7 @@ $.extend(LineGraph.prototype, {
 		if(this.xTranslate == undefined){
 			this.xTranslate = 0;
 		}
-		this.xTranslate +=  ((this.graphManager._currentTimelineDate.getTime() - previousEndTimeLineDate.getTime())*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange); 
+		this.xTranslate +=  ((this.graphManager._currentTimelineDate.getTime() - previousEndTimeLineDate.getTime())*graphArea._chartSVGSize.width/this.graphManager._xAxisDateTimeRange); 
 		// LOG(arguments,'',"xTranslate " + xTranslate);
 
 		//tempoarary
