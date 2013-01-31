@@ -116,14 +116,13 @@ function GraphManager(element, charttype, width, height, settings){
 		horizontal_unit: '', //(km/h),
 		background_color: '#222',
 		grid_color: 'blue',
-		marker : 'false',//circle/square',
+		marker : false,//circle/square',
 		marker_size: 5,
 		draw_axis: true,
 		label_rotation: 90,
 		label_size:10,
-		timeLabelsTick: 1000, // e.g. every 1 min on graph
-		ticks : 10, // TODO change to time (e.g from last 2h)
-		timePeriod : 1000*60, // (in milis)
+		timeLabelsTick: 1000*10, // e.g. every 1 min on graph
+		timePeriod : 1000*50, // (in milis)
 		name : $(element).attr('id'),
 		legend : false
 	}
@@ -140,8 +139,8 @@ function GraphManager(element, charttype, width, height, settings){
 	// LOG(arguments,'',"NAME = " + this.settings.name);
 	
 	// TODO------- set up legend or title visible (temporary) ---------------------
-	this.isLegend = this.settings.legend;
-	this.isTitle = true;
+	this.isLegend = this.settings.legend || false;
+	this.isTitle = this.settings.title || false;
 	//-----------------
 	this._series = [];
 	// TODO remove after tests
@@ -152,7 +151,8 @@ function GraphManager(element, charttype, width, height, settings){
 	this._currentTimelineDate = new Date();
 	this._xAxisDateTimeRange;
 	this._setDateTimeRange();
-	this._xAxis = new Axis(this,this.settings.ticks);
+	// this._xAxis = new Axis(this,this.settings.ticks);
+	this._xAxis = new TimeAxis(this);
 	this._yAxis = new Axis(this,5);
 	this.regions = {
 		'legend':{ x : { fromX: 0.0, toX: 0.2}, y : { fromY: 0.0, toY: 1.0 } },
@@ -193,12 +193,12 @@ $.extend(GraphManager.prototype,{
 		return this;
 	},
 	_defineDefs : function _defineDefs() {
-		var defs = this.svgManager.defs(this.settings.name + '_defs');
-		var gridlines = this.svgManager.pattern(defs, "gridLines", 0,0,200,100, 0,0,100,50, {patternUnits: 'userSpaceOnUse'});
+		this.defs = this.svgManager.defs(this.settings.name + '_defs');
+		var gridlines = this.svgManager.pattern(this.defs, "gridLines", 0,0,200,100, 0,0,100,50, {patternUnits: 'userSpaceOnUse'});
 		var line1 = this.svgManager.line(gridlines, 0,0,100,0,{strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1});
 		var line2 = this.svgManager.line(gridlines, 0,0,0,100,{strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1});
 
-		var marker = this.svgManager.marker( defs, 'circles', 8, 8, 15, 15, 'auto',{ markerUnits:"strokeWidth"});
+		var marker = this.svgManager.marker(this.defs, 'circle', 8, 8, 15, 15, 'auto',{ markerUnits:"strokeWidth"});
 		var markerCircle = this.svgManager.circle(marker, 8,8,2, {fill:"white", stroke:'red', strokeWidth:'1'});
 
 	},	
@@ -379,20 +379,32 @@ function GraphArea(graphManager){
 	this.graphManager = graphManager;
 	this.padding = 0.1;
 	this.paddingLeft=0.1;
-	this.paddingRight = 0.01;
-	this.paddingBottom = 0.1;
+	this.paddingRight = 0.02;
+	this.paddingBottom = 0.15;
 	this.paddingTop = 0.01;
 	this.graphPadding = 0.1;
+	this.clip;
 };
 $.extend(GraphArea.prototype,{
 	_draw: function draw(){
+
+		// this.clip = this.svgManager.clipPath(this.graphManager.defs,"graphAreaClipPath"+this.graphManager.settings.name, "userSpaceOnUse", {class_ : "graphAreaClipPath"});
+		// // this.svgManager.rect(this.clip, 
+		// // 					(this.graphManager.isLegend == true ? calculateRelativeValue(this.graphManager.regions.graph.x.fromX,this.svgManager._width(),0.01) : 0),
+		// // 					(this.graphManager.isTitle == true ? calculateRelativeValue(this.graphManager.regions.graph.y.fromY,this.svgManager._height()) : 0),
+		// // 					this.svgManager._width()*(this.graphManager.regions.graph.x.toX - this.graphManager.regions.graph.x.fromX) - (this.svgManager._width() * this.paddingRight),
+		// // 					this.svgManager._height()*(this.graphManager.regions.graph.y.toY - this.graphManager.regions.graph.y.fromY) - (this.svgManager._height() * this.paddingTop));
+		// this.svgManager.rect(this.clip, 0,0,
+		// 						this.graphManager.isLegend == true ? this.svgManager._width()*(this.graphManager.regions.graph.x.toX - this.graphManager.regions.graph.x.fromX) - (this.svgManager._width() * this.paddingRight) : this.svgManager._width() - calculateRelativeValue(this.svgManager._width(), this.paddingRight),
+		// 						this.graphManager.isTitle == true ? this.svgManager._height()*(this.graphManager.regions.graph.y.toY - this.graphManager.regions.graph.y.fromY) - (this.svgManager._height() * this.paddingTop) : this.svgManager._height()) ;
+
 		this._group = this.svgManager.group(this.svgManager._wrapper, "graphRegion"+this.graphManager.settings.name, {class_: "graphRegion", transform: 'scale(1,1)'});
-	
+		
 		// --- changing group position if legend or title are shown
 		this.svgManager.change(this._group, {transform:'scale(1,1) translate('+ 
-						(this.graphManager.isLegend == true ? calculteRelativeValue(this.graphManager.regions.graph.x.fromX,this.svgManager._width()) : 0) 
+						(this.graphManager.isLegend == true ? calculateRelativeValue(this.graphManager.regions.graph.x.fromX,this.svgManager._width()) : 0) 
 						+','+ 
-						(this.graphManager.isTitle == true ? calculteRelativeValue(this.graphManager.regions.graph.y.fromY,this.svgManager._height()) : 0) 
+						(this.graphManager.isTitle == true ? calculateRelativeValue(this.graphManager.regions.graph.y.fromY,this.svgManager._height()) : 0) 
 						+')'});
 
 		// [width,height]
@@ -474,9 +486,9 @@ $.extend(TitleArea.prototype,{
 	_draw : function _draw(){
 		this._group = this.svgManager.group("titleArea", 
 											{transform : 'translate(' + 
-															calculteRelativeValue(this.graphManager.regions['title'].x.fromX, this.svgManager._width())
+															calculateRelativeValue(this.graphManager.regions['title'].x.fromX, this.svgManager._width())
 															+ ', '+
-															calculteRelativeValue(this.graphManager.regions['title'].y.fromY, this.svgManager._height())+')',
+															calculateRelativeValue(this.graphManager.regions['title'].y.fromY, this.svgManager._height())+')',
 															class_: "titleArea", 
 															fill: 'red',stroke: 'none'});
 		var size = calculateElementRelativeSize(this.svgManager._width(), this.svgManager._height(), this.graphManager._getRegionWidthRatio('title'), this.graphManager._getRegionHeightRatio('title')); 
@@ -493,9 +505,9 @@ function LegendArea(graphManager){
 $.extend(LegendArea.prototype,{
 	_draw: function _draw(){
 		this._group = this.svgManager.group("legendArea"+this.graphManager.settings.name, {transform : 'translate(' +
-														calculteRelativeValue(this.graphManager.regions['legend'].x.fromX, this.svgManager._width())
+														calculateRelativeValue(this.graphManager.regions['legend'].x.fromX, this.svgManager._width())
 														+ ', '+
-														calculteRelativeValue(this.graphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
+														calculateRelativeValue(this.graphManager.regions['legend'].y.fromY, this.svgManager._height()) +') ',
 														class_: "legendArea",
 														fill: 'blue'});
 		this.svgManager.rect(this._group,0,0,this.svgManager._width()*this.graphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.graphManager._getRegionHeightRatio('legend'));
@@ -554,6 +566,39 @@ $.extend(Axis.prototype,{
 	}
 });
 
+// TODO take care of font size on labels and order of magnitude of time
+function TimeAxis(graphManager){
+	var graphManager = graphManager;
+	var _axisGroup;
+	var _labelsGroup;
+	var _labelsNodes = [];
+	var _labelsSettings = {strokeWidth: 1, textAnchor: 'middle', fontSize: 12, stroke:'none', fill:'blue'};
+	var _lineSettings = {class_: 'axis',stroke:'red', scaleSize : 10};
+	return {
+		drawTimeAxis : function drawTimeAxis(graphArea,x1,y1,x2,y2,settings){
+			var x1 = parseInt(x1);
+			var y1 = parseInt(y1);
+			var x2 = parseInt(x2);
+			var y2 = parseInt(y2);
+			_axisGroup = graphManager.svgManager.group(graphManager._graphArea._group);
+			_labelsGroup = graphManager.svgManager.group(graphManager._graphArea._group,{class_ : "time"});
+			graphManager.svgManager.line(_axisGroup,x1,y1,x2,y2, $.extend({},_lineSettings, settings));
+			var numberOfLabels = Math.ceil(graphManager._xAxisDateTimeRange/graphManager.settings.timeLabelsTick);
+			var offset = graphArea._chartSVGSize[0]/ numberOfLabels;
+			LOG(arguments,'',"numberOfLabels = " + numberOfLabels + " | offset = " + offset);
+			// var clip =graphManager.svgManager.clipPath(_labelsGroup, "axisclipPath");
+			// graphManager.svgManager.rect(clip, x1, y1, x2)
+			while(numberOfLabels >= 0){
+				var lineOffset = numberOfLabels*offset;
+				LOG(arguments,"","draw divisor | lineOffset = " + lineOffset);
+				graphManager.svgManager.line(_labelsGroup, x1 + lineOffset, y1, x1 + lineOffset, y1+_lineSettings.scaleSize, {strokeWidth: 1});
+				_labelsNodes.push(graphManager.svgManager.text(_labelsGroup, x1 + lineOffset, y1 + _lineSettings.scaleSize + _labelsSettings.fontSize, "label", _labelsSettings ));
+				numberOfLabels--;
+			}
+		},
+
+	}
+}
 // ## New approach to get immutable vars (closures!)
 function DataSeries(measurements, name){
 	var _measurements = measurements; // e.g. [ { value : 0.92, timestamp : 12435436 }];
@@ -699,7 +744,7 @@ $.extend(LineGraph.prototype, {
 					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize[1],maxValue, measurementsToDraw[0].value,graphArea.graphPadding);
 					var tmpPath = graphArea.svgManager.createPath();
 					var element = { 'path' : tmpPath,
-									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y), {fill: 'none', stroke: 'gray', strokeWidth: 1, markerMid: 'url(#circles)'}) };
+									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y), {fill: 'none', stroke: 'gray', strokeWidth: 1, markerMid: this.graphManager.settings.marker ? 'url(#'+this.graphManager.settings.marker+ ')' : 'none'}) };
 					series.svgElement(element);
 					isFirstValueOfSeries = true;
 				}
@@ -723,11 +768,16 @@ $.extend(LineGraph.prototype, {
 		}
 	},
 	drawAxes: function drawAxes(graphArea){
-		graphArea._drawAxis(this.graphManager._xAxis,'xAxis', 
-							graphArea._chartSVG.getAttribute('x'), 
-							graphArea._chartSVGSize[1]+calculteRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
+		// graphArea._drawAxis(this.graphManager._xAxis,'xAxis', 
+		// 					graphArea._chartSVG.getAttribute('x'), 
+		// 					graphArea._chartSVGSize[1]+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
+		// 					parseInt(graphArea._chartSVGSize[0])+parseInt(graphArea._chartSVG.getAttribute('x')), 
+		// 					graphArea._chartSVGSize[1]+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
+		this.graphManager._xAxis.drawTimeAxis(graphArea, 
+							graphArea._chartSVG.getAttribute('x'),
+							graphArea._chartSVGSize[1]+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
 							parseInt(graphArea._chartSVGSize[0])+parseInt(graphArea._chartSVG.getAttribute('x')), 
-							graphArea._chartSVGSize[1]+calculteRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
+							graphArea._chartSVGSize[1]+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
 		graphArea._drawAxis(this.graphManager._yAxis,'yAxis', 
 							graphArea._chartSVG.getAttribute('x'), 
 							graphArea._chartSVG.getAttribute('y'),
@@ -788,7 +838,10 @@ $.extend(LineGraph.prototype, {
 });
 
 //----------------------------------------------------------------------------
-function calculteRelativeValue(wrapperSize, ratio){
+function calculateRelativeValue(ratio, wrapperSize,padding){
+	if(padding != undefined){
+		return wrapperSize*ratio + wrapperSize*padding;
+	}
 	return wrapperSize*ratio;
 }
 
