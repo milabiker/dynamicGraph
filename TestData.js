@@ -1,4 +1,4 @@
-
+toggle = true;
 var database = {};
 var generatorTime = 1000;
 var counterForSin = 1;
@@ -20,11 +20,22 @@ function generator(seriesName){
 function generateMeasure(){
 	var tmp = {};
 	// -------- random -------------
-	// tmp.value = Math.random()*10;
+	tmp.value = Math.random()*10;
+	
 	// -------- sinus --------------
-	tmp.value = Math.abs(Math.sin(counterForSin/10));
+	// tmp.value = Math.abs(Math.sin(counterForSin/10));
+	
 	// -------- number ------------
 	// tmp.value = counterForSin;
+	
+	// 1 or 2
+		// if(toggle){
+		// 	toggle = false;
+		// 	tmp.value = 1;
+		// }else{
+		// 	toggle = true;
+		// 	tmp.value = 5;
+		// }
 	counterForSin++;
 
 	tmp.timestamp = new Date().getTime();
