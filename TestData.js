@@ -1,6 +1,6 @@
 toggle = true;
 var database = {};
-var generatorTime = 1000;
+var generatorTime = 100;
 var counterForSin = 1;
 var timer = setTimeout(generator,0,'seria_1');
 //var timer = setTimeout(generator,10,'seria_2');
@@ -20,10 +20,11 @@ function generator(seriesName){
 function generateMeasure(){
 	var tmp = {};
 	// -------- random -------------
-	tmp.value = Math.random()*10;
+	// tmp.value = Math.random()*10;
 	
 	// -------- sinus --------------
 	// tmp.value = Math.abs(Math.sin(counterForSin/10));
+	tmp.value = Math.sin(counterForSin/10);
 	
 	// -------- number ------------
 	// tmp.value = counterForSin;

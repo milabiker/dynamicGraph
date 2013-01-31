@@ -235,14 +235,7 @@ $.extend(GraphManager.prototype,{
 		console.log("TIMER id " + this._timerID);
 	},
 	callback :function callback(inst){
-		// LOG(arguments,'passed to TestData',"_currentTimelineDate = " + inst._currentTimelineDate);
 
-	// ------------- getting new data -------------
-		// ---- older TestData generator		
-		// var numberOfNewValues = inst._addSeries(TestData(5,1, new Date(inst._currentTimelineDate.getTime())));
-		
-		// ----- gets new values from generator
-		// LOG(arguments,''," NAME = " + inst.settings.name);
 		if(inst.firstTime){
 			LOG(arguments,'',"First time");
 			var numberOfNewValues = inst._addSeries(getData(inst._currentTimelineDate.getTime()-inst._xAxisDateTimeRange));
@@ -250,19 +243,15 @@ $.extend(GraphManager.prototype,{
 		}else{
 			var numberOfNewValues = inst._addSeries(getData(inst._currentTimelineDate.getTime()));
 		}
-		// LOG(arguments,'',"numberOfNewValues = "+ numberOfNewValues);
-		// --------------------------------------------
-		// LOG(arguments,''," NAME = " +inst.settings.name);
 		inst.charttype.refreshGraph(inst._graphArea,numberOfNewValues);
 		// LOG(arguments,'passed to callback',"_currentTimelineDate = " + inst._currentTimelineDate);
-		inst._timerID = setTimeout(inst.callback,4000,inst);
+		inst._timerID = setTimeout(inst.callback,100,inst);
 		// LOG(arguments,'',"callback !!!");
 		if(!inst.isUpdateActive){
 			console.log("INST timer id " + inst._timerID);
 			clearTimeout(inst._timerID);
 			LOG(arguments,'',"Timeout cleared !!!");
 		}
-		//clear();
 	},
 	clearUpdate : function clearUpdate(){
 		this.isUpdateActive = false;
@@ -356,23 +345,6 @@ $.extend(GraphManager.prototype,{
 //		LOG(arguments,'odl way', "_xAxisDateTimeRange = " + this._xAxisDateTimeRange);
 
 	},
-	// calculateScale : function calculateScale(size,value,padding){
-		// var paddingValue = size*padding; 
-		// LOG(arguments,'',"paddingValue = " + paddingValue + " | value = " + value);
-		// if(this.yScale != undefined){
-		// 	var tmpScale = (size-2*paddingValue)/value;
-		// 	LOG(arguments,'',"tmpScale = " + tmpScale + " == " + this.yScale );
-		// 	if(this.yScale != tmpScale){
-		// 		this.yScale = tmpScale;
-		// 		// LOG(arguments,'',"Returning true ");
-		// 		return true;
-		// 	}
-		// 	return false;
-		// }else{
-		// 	this.yScale = (size-2*paddingValue)/value;
-		// 	LOG(arguments,'',"initialize yScale = " + this.yScale);
-		// 	return true;
-		// }
 	calculateScale : function calculateScale(size,padding){
 		var range = this.calcuteRange();
 		var sizeOfDrawableArea = size - (2*size*padding); // if size = 1000 then sizeOfDrawableArea should equal 800 (if padding = 0.1)
@@ -389,15 +361,6 @@ $.extend(GraphManager.prototype,{
 			return false; // ?? or true ?
 		}
 	},
-	// calculateYpoint : function calculateYpoint(svgGraphSize, value, padding){
-	// 	var paddingValue = svgGraphSize * padding;
-	// 	LOG(arguments,'',"svgSize = " + svgGraphSize + " | paddingValue = " + paddingValue + " yScale = " + this.yScale + " value = " + value);
-	// 	var sth = value * this.yScale;
-	// 	LOG(arguments,'',"value*scale = " + sth);
-	// 	var tmp = svgGraphSize - (value * this.yScale) + paddingValue;
-	// 	LOG(arguments,'',"Y = " + tmp);
-	// 	return tmp;
-	// }
 	calculateYpoint : function calculateYpoint(svgGraphSize, maxValue, value, padding){
 		var paddingValue = svgGraphSize * padding;
 		var point = (maxValue - value) * this.yScale + paddingValue;
@@ -484,22 +447,15 @@ $.extend(GraphArea.prototype,{
 		}
 	},
 	upscale : function upscale(series,svgSize,maxValue){
-		// LOG(arguments,'',"series length" + series.length);
 		for(var i=0, len=series.length; i < len; i++){
 			// LOG(arguments,'',"upscale of " + key);
 			var element = series[i].svgElement();
-			// LOG(arguments,'',"element = " + element);
 			var measurements = series[i].getMeasurmentsToDraw(-1);
-			// LOG(arguments,'',"pathSegList " + element.pathNode.pathSegList);
 			// console.log("##################################################################################");
 			for(var i=0,len = measurements.length; i < len; i++){
 				// console.log("------------------------------------------------------------------------------");
 				// LOG(arguments,'old y value', element.pathNode.pathSegList.getItem(i).y);
-				// LOG(arguments,'','measurements[i] = ' + measurements[i].value + " | scale = " + scale);
-
-				// element.pathNode.pathSegList.getItem(i).y = svgSize - measurements[i].value*scale;
 				element.pathNode.pathSegList.getItem(i).y = this.graphManager.calculateYpoint(svgSize,maxValue,measurements[i].value,this.graphPadding);
-
 				// LOG(arguments,'new y value', element.pathNode.pathSegList.getItem(i).y);
 			}
 		}
@@ -712,15 +668,10 @@ $.extend(LineGraph.prototype, {
 	initialize: function(graphManager){
 		this.graphManager = graphManager;
 	},
+	/**
+	* Here can add functionlity for static graph, some function to add data to series
+	*/
 	draw: function draw(graphArea){
-		var xScale = Math.round(graphArea._chartSVGSize[0]/this.graphManager.settings.ticks);
-		// graphArea._chartSVGSize[1] - topPadding  => to get padding at max value
-		var yScale = graphArea._chartSVGSize[1]/this.graphManager._getMaxValueFromSeries();
-		// TODO remove
-		// LOG(arguments,'',"xScale = " + xScale);
-		// LOG(arguments,'',3"yScale = " + yScale);
-		// LOG(arguments,'',"settings.ticks = " + this.graphManager.settings.ticks);
-
 		graphArea._drawGridLines();
 		//this.drawSeries(graphArea,xScale,yScale);
 		this.drawAxes(graphArea);
@@ -741,13 +692,10 @@ $.extend(LineGraph.prototype, {
 
 				var isFirstValueOfSeries;
 				if(seriesSvgElement == undefined){
-					//var x = graphArea._chartSVGSize[0] + ((measurementsToDraw[0].timestamp - this.graphManager._currentTimelineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange);
 					var timedifference = measurementsToDraw[0].timestamp - this.graphManager._currentTimelineDate.getTime();
 					series.setLastMeasurmentXpoint(graphArea._chartSVGSize[0] - graphArea._chartSVGSize[0]/100 ); //set last valute point to svg width - padding 1/100 width
 					var x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
-					// var y = graphArea._chartSVGSize[1] - (measurementsToDraw[0].value * yScale);
 					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize[1],maxValue, measurementsToDraw[0].value,graphArea.graphPadding);
-					// series.setLastMeasurmentXpoint(x);
 					var tmpPath = graphArea.svgManager.createPath();
 					var element = { 'path' : tmpPath,
 									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y), {fill: 'none', stroke: 'gray', strokeWidth: 1, markerMid: 'url(#circles)'}) };
@@ -759,11 +707,8 @@ $.extend(LineGraph.prototype, {
 				element.path._path = element.pathNode.getAttribute('d');	
 				var x;
 				for(var i= isFirstValueOfSeries ? 1 : 0, l = measurementsToDraw.length; i < l; i++){
-				// for(var i=  0, l = measurementsToDraw.length; i < l; i++){
-					// var x = graphArea._chartSVGSize[0] + ((measurementsToDraw[i].timestamp - this.graphManager._currentTimelineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange);
 					var timedifference = measurementsToDraw[i].timestamp - this.graphManager._currentTimelineDate.getTime();
 					x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
-					// var y = (graphArea._chartSVGSize[1]/10) + graphArea._chartSVGSize[1] - (measurementsToDraw[i].value * yScale);
 					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize[1],maxValue,measurementsToDraw[i].value,graphArea.graphPadding);
 					LOG(arguments,"","y = " + y);
 					element.path.line(x,y).path();
@@ -810,7 +755,6 @@ $.extend(LineGraph.prototype, {
 
 	},
 	refreshGraph: function refreshGraph	(graphArea,numberOfNewValuesToDraw){
-		// this.graphManager.yScale = graphArea._chartSVGSize[1]/this.graphManager._getMaxValueFromSeries();
 		
 		var shouldUpscale = this.graphManager.calculateScale(graphArea._chartSVGSize[1], graphArea.graphPadding);
 		this.drawSeries(graphArea,this.graphManager.yScale,numberOfNewValuesToDraw);// it was on the bottom
@@ -829,7 +773,6 @@ $.extend(LineGraph.prototype, {
 		}
 		this.xTranslate +=  ((this.graphManager._currentTimelineDate.getTime() - previousEndTimeLineDate.getTime())*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange); 
 		// LOG(arguments,'',"xTranslate " + xTranslate);
-		//graphArea._chartSVGSize[0] +((this.graphManager._currentTimelineDate- previousEndTimeLineDate)*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange);
 
 		//tempoarary
 		//refreshing time on legend area
