@@ -1,6 +1,6 @@
 toggle = true;
 var database = {};
-var generatorTime = 100;
+var generatorTime = 1000;
 var counterForSin = 1;
 var timer = setTimeout(generator,0,'seria_1');
 //var timer = setTimeout(generator,10,'seria_2');
@@ -66,9 +66,14 @@ function getData(dateOfLastMesaurement){
 		var tmpObj = {};
 		var tmpArray = database[key].slice(i+1);
 		// console.log("data length = " + database[key].length); 
-		tmpObj[key] = tmpArray;
+		// console.log("tmpArray length = " + tmpArray.length); 
 
+		if(tmpArray.length > 0){
+			tmpObj[key] = tmpArray;
 		$.extend(toReturn,tmpObj);
+			
+		}
+
 	}
 	return toReturn;
 }

@@ -123,7 +123,7 @@ function GraphManager(element, charttype, width, height, settings){
 		label_size:10,
 		timeLabelsTick: 1000, // e.g. every 1 min on graph
 		ticks : 10, // TODO change to time (e.g from last 2h)
-		timePeriod : 1000*60*24, // (in milis)
+		timePeriod : 1000*60, // (in milis)
 		name : $(element).attr('id'),
 		legend : false
 	}
@@ -350,7 +350,7 @@ $.extend(GraphManager.prototype,{
 		var sizeOfDrawableArea = size - (2*size*padding); // if size = 1000 then sizeOfDrawableArea should equal 800 (if padding = 0.1)
 		if(this.yScale != undefined){
 			var tmpScale = sizeOfDrawableArea/range;
-			LOG(arguments,'',"tmpScale = " + tmpScale + " == " + this.yScale );
+			// LOG(arguments,'',"tmpScale = " + tmpScale + " == " + this.yScale );
 			if(tmpScale != this.yScale){
 				this.yScale = tmpScale;
 				return true;
@@ -563,7 +563,7 @@ function DataSeries(measurements, name){
 	var _name = name ;
 	var _dateOfLastUpdate = new Date(measurements.last().timestamp);
 	var _element;
-	LOG(arguments,'',"_minValue = " + _minValue + " | _maxValue = " + _maxValue);
+	// LOG(arguments,'',"_minValue = " + _minValue + " | _maxValue = " + _maxValue);
 	//var _dateOfLastDrawedMeasure; // TODO to consider
 
 	// private functions ! 
@@ -590,7 +590,7 @@ function DataSeries(measurements, name){
 		if(_minValue > newMinValue){
 			_minValue = newMinValue;
 		}
-		LOG(arguments,'',"_minValue = " + _minValue);
+		// LOG(arguments,'',"_minValue = " + _minValue);
 	};
 	
 	/**
@@ -602,6 +602,7 @@ function DataSeries(measurements, name){
 		*/
 		update : function update(measurements){
 			_measurements.extend(measurements);
+			// LOG(arguments,"","measurements.length = " + measurements.length);
 			// LOG(arguments,'',"last timestamp " + (new Date(measurements.last().timestamp)));
 			_dateOfLastUpdate = new Date(measurements.last().timestamp);
 			_updateMaxMinValueFromMeasurements(measurements);
@@ -710,7 +711,7 @@ $.extend(LineGraph.prototype, {
 					var timedifference = measurementsToDraw[i].timestamp - this.graphManager._currentTimelineDate.getTime();
 					x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize[0]/this.graphManager._xAxisDateTimeRange;
 					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize[1],maxValue,measurementsToDraw[i].value,graphArea.graphPadding);
-					LOG(arguments,"","y = " + y);
+					// LOG(arguments,"","y = " + y);
 					element.path.line(x,y).path();
 				}
 
