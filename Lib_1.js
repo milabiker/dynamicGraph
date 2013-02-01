@@ -171,7 +171,6 @@ function GraphManager(element, charttype, width, height, settings){
 		'graph': { x : { fromX: 0.2, toX: 1.0}, y : { fromY: 0.1, toY: 1.0 } }
 		};
 	// defining defs , it must be at the begining of svg elements
-	this._defineDefs();
 	if(this.isTitle){
 		this._titleArea = new TitleArea(this);
 	}
@@ -200,15 +199,21 @@ $.extend(GraphManager.prototype,{
 
 		this.activateUpdate();//this.callback();
 		this.charttype.draw(this._graphArea);
+		if(this.settings.grid){
+			this._defineDefs(this._graphArea);
+		}
 
 		/* returning this to be able to use it after other SVGDynamicGraph function */		
 		return this;
 	},
-	_defineDefs : function _defineDefs() {
+	_defineDefs : function _defineDefs(graphArea) {
 		this.defs = this.svgManager.defs(this.settings.name + '_defs');
-		var gridlines = this.svgManager.pattern(this.defs, "gridLines", 0,0,200,100, 0,0,100,50, { class_: "gridlines", patternUnits: 'userSpaceOnUse'});
-		var line1 = this.svgManager.line(gridlines, 0,0,100,0,{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1});
-		var line2 = this.svgManager.line(gridlines, 0,0,0,100,{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1});
+		var horizontalGridlineLenght = graphArea._chartSVGSize.width/Math.ceil(this._xAxisDateTimeRange/this.settings.timeLabelsTick);
+		var verticalGridlineLenght = graphArea._chartSVGSize.height/this.settings.yAxisTicks;
+		LOG(arguments,'','gridlineHorizontalLenght = ' + horizontalGridlineLenght);
+		var gridlines = this.svgManager.pattern(this.defs, "gridLines", 0,0,horizontalGridlineLenght,verticalGridlineLenght, 0,0,0,0, { class_: "gridlines", patternUnits: 'userSpaceOnUse'});
+		var line1 = this.svgManager.line(gridlines, 0,0,horizontalGridlineLenght,0,{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1});
+		var line2 = this.svgManager.line(gridlines, 0,0,0,verticalGridlineLenght,{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1});
 
 		var marker = this.svgManager.marker(this.defs, 'circle', 8, 8, 15, 15, 'auto',{ markerUnits:"strokeWidth"});
 		var markerCircle = this.svgManager.circle(marker, 8,8,2, {fill:"white", stroke:'red', strokeWidth:'1'});
@@ -243,7 +248,7 @@ $.extend(GraphManager.prototype,{
 	activateUpdate : function activateUpdate(){
 		this.isUpdateActive = true;
 		
-		this._timerID = setTimeout(this.callback, 5000, this);
+		this._timerID = setTimeout(this.callback, 1000, this);
 		console.log("TIMER id " + this._timerID);
 	},
 	callback :function callback(inst){
@@ -358,7 +363,7 @@ $.extend(GraphManager.prototype,{
 
 	},
 	calculateScale : function calculateScale(size,padding){
-		var range = this.calcuteRange();
+		var range = this.calculateRange();
 		var sizeOfDrawableArea = size - (2*size*padding); // if size = 1000 then sizeOfDrawableArea should equal 800 (if padding = 0.1)
 		if(this.yScale != undefined){
 			var tmpScale = sizeOfDrawableArea/range;
@@ -378,23 +383,26 @@ $.extend(GraphManager.prototype,{
 		var point = (maxValue - value) * this.yScale + paddingValue;
 		return point;
 	},
-	calcuteRange : function calcuteRange(){
+	calculateRange : function calculateRange(){
 		var range = this._getMaxValueFromSeries() - this._getMinValueFromSeries() ;
 		return range != 0 ? range : 1;
 	},
 	calculateRangeForYAxis : function calculateRangeForYAxis(graphArea){
 		var min = this._getMinValueFromSeries();
 		var max = this._getMaxValueFromSeries();
-		var range = max - min ;
-		var chartPadding = graphArea.paddingValue*graphArea._chartSVGSize.height;
+		var range = this.calculateRange();
+		var chartPadding = graphArea.graphPadding*graphArea._chartSVGSize.height;
 		var paddingValue =  chartPadding * range / (graphArea._chartSVGSize.height - 2*chartPadding);
-		LOG(arguments,'',"paddingValue = " + paddingValue);
+		LOG(arguments,'',"min = " + min + " max = " + max + " | paddingValue = " + paddingValue + " | chartPadding = " + chartPadding + " | svgSize = " + graphArea._chartSVGSize.height + " | padding = " + graphArea.graphPadding);
 		var realRange = range + (2*paddingValue);
 		var realMinValue = min - paddingValue;
 		var realMaxValue = max + paddingValue;
-		return { range : realRange,
+
+		var obj = { range : realRange,
 				minValue : realMinValue,
-				maxValue : realMinValue};
+				maxValue : realMaxValue};
+		LOG(arguments,'', " obj = " + JSON.stringify(obj));
+		return obj;
 	}
 });
 
@@ -492,9 +500,9 @@ $.extend(GraphArea.prototype,{
 			this.svgManager.text(gline,10, 100, "A x i s", {stroke:'none',  textAnchor : 'middle', writingMode: 'tb' , glyphOrientationVertical : 0});
 
 			//-----
-				var objWithSizes = this.graphManager.calculateRangeForYAxis(this);
-				var step = axis.calculateStep(objWithSizes.range, axis._ticks);
-				var labels = axis.generateLabelsArray(step, objWithSizes.minValue, objWithSizes.maxValue, axis._ticks );
+				// var objWithSizes = this.graphManager.calculateRangeForYAxis(this);
+				// var step = axis.calculateStep(objWithSizes.range, axis._ticks);
+				// var labels = axis.generateLabelsArray(step, objWithSizes.minValue, objWithSizes.maxValue, axis._ticks );
 				// var tmpRange = this.graphManager._getMaxValueFromSeries() - this.graphManager._getMinValueFromSeries();
 				// var range = tmpRange ==  0 ? this.graphManager._getMaxValueFromSeries()*2 : tmpRange;
 				// var step = axis.calculateStep(range,axis._ticks);
@@ -505,8 +513,7 @@ $.extend(GraphArea.prototype,{
 				// LOG(arguments,'', labels[counter]);
 				lineOffset = counter*offset;
 				this.svgManager.line(gline, x1-len, y2 - lineOffset, x1, y2 - lineOffset);
-				axis._labelsNodes.push(this.svgManager.text(gline, x1-len - 2, y2 - lineOffset, "asd", { textAnchor : 'end', stroke:'none', fontSize: 10}));
-				
+				axis._labelsNodes.push(this.svgManager.text(gline, x1-len - 2, y2 - lineOffset, "...", { textAnchor : 'end', stroke:'none', fontSize: 10}));
 				counter++;
 			}
 		}else if( y1 == y2){			
@@ -643,8 +650,8 @@ $.extend(Axis.prototype,{
 		mag = Math.floor(log10(tempStep));
 		magPow = Math.pow(10, mag);
 
-		magMSD = tempStep/magPow;
-		LOG(arguments,'',"magMSD = " + magMSD);
+		magMSD = tempStep/magPow + 0.5;
+		// LOG(arguments,'',"magMSD = " + magMSD);
 
 		if(magMSD > 5.0){
 			magMSD = 10.0;
@@ -657,24 +664,42 @@ $.extend(Axis.prototype,{
 		}
 		return magMSD*magPow;
 	},
-	generateLabelsArray : function generateLabelsArray(tickStep, minValue, maxValue, ticks){
+	// generateLabelsArray : function generateLabelsArray(tickStep, minValue, maxValue, ticks){
+		// var tmpArray = [];
+		// var minBound = tickStep * Math.floor(minValue/tickStep);
+		// var maxBound = tickStep * Math.round(1+maxValue/tickStep);
+		// var labelValue = minBound; 
+		// while(tmpArray.length <= ticks){
+		// 	tmpArray.push(labelValue.toString());
+		// 	labelValue += tickStep;
+		// }
+		// // tmpArray.push(maxBound);
+		// LOG(arguments,'','ticks = ' + ticks + ' labels = ' + tmpArray + "  minValue = " + minValue + " maxValue = " + maxValue);
+		// return tmpArray;
+
+	generateLabelsArray : function generateLabelsArray(rangeObj){
 		var tmpArray = [];
-		var minBound = tickStep * Math.floor(minValue/tickStep);
-		var maxBound = tickStep * Math.round(1+maxValue/tickStep);
-		var labelValue = minBound; 
-		while(tmpArray.length <= ticks){
-			tmpArray.push(labelValue.toString());
-			labelValue += tickStep;
+		var tickValue = rangeObj.range/this._ticks;
+		// tmpArray.push(rangeObj.minValue.toString());
+		for(var i=0; i <= this._ticks; i++){
+			var value = (rangeObj.minValue+(i*tickValue)).toFixed(2);
+			// LOG(arguments,'',"label " + i + " value = " + value);
+			tmpArray.push(value.toString());
 		}
-		// tmpArray.push(maxBound);
-		LOG(arguments,'','ticks = ' + ticks + ' labels = ' + tmpArray + "  minValue = " + minValue + " maxValue = " + maxValue);
+		// LOG(arguments,''," tmpArray.length = " + tmpArray.length);
 		return tmpArray;
 	},
-	refreshLabels : function refreshLabels(minValue,maxValue){
-		var range = maxValue - minValue;
-		var step = this.calculateStep(range,this._ticks);
-		var labels = this.generateLabelsArray(step,minValue,maxValue,this._ticks);
-		for(var len = this._labelsNodes.length; len > 0; len--){
+	refreshLabels : function refreshLabels(graphArea,minValue,maxValue){
+		// var range = maxValue - minValue;
+		// var step = this.calculateStep(range,this._ticks);
+		// var labels = this.generateLabelsArray(step,minValue,maxValue,this._ticks);
+		// for(var len = this._labelsNodes.length; len > 0; len--){
+		// 	$(this._labelsNodes[len],this.graphManager.svgManager.root()).text(labels[len]);
+		// }
+		var rangeObj = this.graphManager.calculateRangeForYAxis(graphArea);
+		var labels = this.generateLabelsArray(rangeObj);
+		// LOG(arguments,'',"_labelsNodes.length = " + this._labelsNodes.length + " | labels.length = " + labels.length + " | labels = " + labels);
+		for(var len = this._labelsNodes.length; len >= 0; len--){
 			$(this._labelsNodes[len],this.graphManager.svgManager.root()).text(labels[len]);
 		}
 	}
@@ -698,14 +723,13 @@ function TimeAxis(graphManager){
 			
 			var numberOfLabels = Math.ceil(graphManager._xAxisDateTimeRange/graphManager.settings.timeLabelsTick);
 			var offset = graphArea._chartSVGSize.width/ numberOfLabels;
-			LOG(arguments,'',"numberOfLabels = " + numberOfLabels + " | offset = " + offset);
+			// LOG(arguments,'',"numberOfLabels = " + numberOfLabels + " | offset = " + offset);
 			// var clip =graphManager.svgManager.clipPath(_labelsGroup, "axisclipPath");
 			// graphManager.svgManager.rect(clip, x1, y1, x2)
 			while(numberOfLabels >= 0){
 				var lineOffset = numberOfLabels*offset;
 				LOG(arguments,"","draw divisor | lineOffset = " + lineOffset);
 				graphManager.svgManager.line(_labelsGroup, x1 + lineOffset, y1, x1 + lineOffset, y1+_lineSettings.scaleSize, {strokeWidth: 1});
-				// var labelText = graphManager._currentTimelineDate.getHours() + " : " + graphManager._currentTimelineDate.getMinutes() + " : " + graphManager._currentTimelineDate.getSeconds();
 				var labelTime = (graphManager._getCurrentTimelineDate().getTime() - graphManager.settings.timePeriod) + numberOfLabels*graphManager.settings.timeLabelsTick;
 				var labelDate = new Date(labelTime);
 
@@ -936,7 +960,7 @@ $.extend(LineGraph.prototype, {
 		matrix = 'matrix(' + matrix + ')';
 		var translate = [offset,0];
 		translate = 'translate(' + translate + ')';
-	    bg.setAttribute('patternTransform', translate);
+	    // bg.setAttribute('patternTransform', translate);
 
 	},
 	refreshGraph: function refreshGraph	(graphArea,numberOfNewValuesToDraw){
@@ -944,10 +968,9 @@ $.extend(LineGraph.prototype, {
 		this.drawSeries(graphArea,this.graphManager.yScale,numberOfNewValuesToDraw);// it was on the bottom
 
 		if(shouldUpscale){
-			// LOG(arguments,"","UPSCALE ! ");
 			graphArea.upscale(this.graphManager._series, graphArea._chartSVGSize.height, this.graphManager._getMaxValueFromSeries());
-			this.graphManager._yAxis.refreshLabels(this.graphManager._getMinValueFromSeries(), this.graphManager._getMaxValueFromSeries());
 		}
+		this.graphManager._yAxis.refreshLabels(graphArea,this.graphManager._getMinValueFromSeries(), this.graphManager._getMaxValueFromSeries());
 		
 		var previousEndTimeLineDate = this.graphManager._getCurrentTimelineDate(); 
 		this.graphManager._currentTimelineDate = this.graphManager._getDateOfLastUpdateFromAllSeries();
