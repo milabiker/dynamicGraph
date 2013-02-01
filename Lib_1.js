@@ -126,6 +126,7 @@ function GraphManager(element, charttype, width, height, settings){
 		name : $(element).attr('id'),
 		legend : false,
 		xAxis : true,
+		yAxisTicks : 4,
 		titleText : 'Chart title'
 	}
 	//===================
@@ -155,7 +156,7 @@ function GraphManager(element, charttype, width, height, settings){
 	this._setDateTimeRange();
 	// this._xAxis = new Axis(this,this.settings.ticks);
 	this._xAxis = new TimeAxis(this);
-	this._yAxis = new Axis(this,5);
+	this._yAxis = new Axis(this,this.settings.yAxisTicks);
 	// if value is < 0 it means 100% of svg size if  value is = 0 then  relative value 
 	this.regionsSize = {
 		titleArea : { width : -1, height : 30},
@@ -242,7 +243,7 @@ $.extend(GraphManager.prototype,{
 	activateUpdate : function activateUpdate(){
 		this.isUpdateActive = true;
 		
-		this._timerID = setTimeout(this.callback, 2000, this);
+		this._timerID = setTimeout(this.callback, 5000, this);
 		console.log("TIMER id " + this._timerID);
 	},
 	callback :function callback(inst){
@@ -380,6 +381,20 @@ $.extend(GraphManager.prototype,{
 	calcuteRange : function calcuteRange(){
 		var range = this._getMaxValueFromSeries() - this._getMinValueFromSeries() ;
 		return range != 0 ? range : 1;
+	},
+	calculateRangeForYAxis : function calculateRangeForYAxis(graphArea){
+		var min = this._getMinValueFromSeries();
+		var max = this._getMaxValueFromSeries();
+		var range = max - min ;
+		var chartPadding = graphArea.paddingValue*graphArea._chartSVGSize.height;
+		var paddingValue =  chartPadding * range / (graphArea._chartSVGSize.height - 2*chartPadding);
+		LOG(arguments,'',"paddingValue = " + paddingValue);
+		var realRange = range + (2*paddingValue);
+		var realMinValue = min - paddingValue;
+		var realMaxValue = max + paddingValue;
+		return { range : realRange,
+				minValue : realMinValue,
+				maxValue : realMinValue};
 	}
 });
 
@@ -474,10 +489,24 @@ $.extend(GraphArea.prototype,{
 			var axisLength = y2 - y1;
 			var offset = Math.round(axisLength/axis._ticks);
 			var counter = 0;
-			this.svgManager.text(gline,20, 100, "A x i s", {stroke:'none', transform: 'rotate(-90,20,100)', textAnchor : 'middle'});
-			while(counter < axis._ticks){
+			this.svgManager.text(gline,10, 100, "A x i s", {stroke:'none',  textAnchor : 'middle', writingMode: 'tb' , glyphOrientationVertical : 0});
+
+			//-----
+				var objWithSizes = this.graphManager.calculateRangeForYAxis(this);
+				var step = axis.calculateStep(objWithSizes.range, axis._ticks);
+				var labels = axis.generateLabelsArray(step, objWithSizes.minValue, objWithSizes.maxValue, axis._ticks );
+				// var tmpRange = this.graphManager._getMaxValueFromSeries() - this.graphManager._getMinValueFromSeries();
+				// var range = tmpRange ==  0 ? this.graphManager._getMaxValueFromSeries()*2 : tmpRange;
+				// var step = axis.calculateStep(range,axis._ticks);
+				// var labels = axis.generateLabelsArray(step,this.graphManager._getMinValueFromSeries(), this.graphManager._getMaxValueFromSeries(),axis._ticks);
+
+			//-----
+			while(counter <= axis._ticks){
+				// LOG(arguments,'', labels[counter]);
 				lineOffset = counter*offset;
 				this.svgManager.line(gline, x1-len, y2 - lineOffset, x1, y2 - lineOffset);
+				axis._labelsNodes.push(this.svgManager.text(gline, x1-len - 2, y2 - lineOffset, "asd", { textAnchor : 'end', stroke:'none', fontSize: 10}));
+				
 				counter++;
 			}
 		}else if( y1 == y2){			
@@ -573,6 +602,7 @@ function Axis(graphManager, ticks){
 	this._minValue;
 	this._maxValue;
 	this._labels;
+	this._labelsNodes = [];
 	this._labelsSettings = {};
 	this._ticks = ticks;
 	this._title = '';
@@ -606,7 +636,49 @@ $.extend(Axis.prototype,{
 		if(typeof settings == object){
 			this._lineSettings = $.extend(this._lineSettings, settings);
 		}
+	},
+	calculateStep : function calculateStep(range, targetSteps){
+		var tempStep = range/targetSteps;
+
+		mag = Math.floor(log10(tempStep));
+		magPow = Math.pow(10, mag);
+
+		magMSD = tempStep/magPow;
+		LOG(arguments,'',"magMSD = " + magMSD);
+
+		if(magMSD > 5.0){
+			magMSD = 10.0;
+		}else if(magMSD > 2.5){
+			magMSD = 5.0;
+		}else if(magMSD > 2.0){
+			magMSD = 2.5;
+		}else if (magMSD > 1.0){
+			magMSD = 2.0;
+		}
+		return magMSD*magPow;
+	},
+	generateLabelsArray : function generateLabelsArray(tickStep, minValue, maxValue, ticks){
+		var tmpArray = [];
+		var minBound = tickStep * Math.floor(minValue/tickStep);
+		var maxBound = tickStep * Math.round(1+maxValue/tickStep);
+		var labelValue = minBound; 
+		while(tmpArray.length <= ticks){
+			tmpArray.push(labelValue.toString());
+			labelValue += tickStep;
+		}
+		// tmpArray.push(maxBound);
+		LOG(arguments,'','ticks = ' + ticks + ' labels = ' + tmpArray + "  minValue = " + minValue + " maxValue = " + maxValue);
+		return tmpArray;
+	},
+	refreshLabels : function refreshLabels(minValue,maxValue){
+		var range = maxValue - minValue;
+		var step = this.calculateStep(range,this._ticks);
+		var labels = this.generateLabelsArray(step,minValue,maxValue,this._ticks);
+		for(var len = this._labelsNodes.length; len > 0; len--){
+			$(this._labelsNodes[len],this.graphManager.svgManager.root()).text(labels[len]);
+		}
 	}
+
 });
 
 // TODO take care of font size on labels and order of magnitude of time
@@ -633,11 +705,25 @@ function TimeAxis(graphManager){
 				var lineOffset = numberOfLabels*offset;
 				LOG(arguments,"","draw divisor | lineOffset = " + lineOffset);
 				graphManager.svgManager.line(_labelsGroup, x1 + lineOffset, y1, x1 + lineOffset, y1+_lineSettings.scaleSize, {strokeWidth: 1});
-				var labelText = graphManager._currentTimelineDate.getHours() + " : " + graphManager._currentTimelineDate.getMinutes() + " : " + graphManager._currentTimelineDate.getSeconds();
-				_labelsNodes.push(graphManager.svgManager.text(_labelsGroup, x1 + lineOffset, y1 + _lineSettings.scaleSize + _labelsSettings.fontSize, labelText , _labelsSettings ));
+				// var labelText = graphManager._currentTimelineDate.getHours() + " : " + graphManager._currentTimelineDate.getMinutes() + " : " + graphManager._currentTimelineDate.getSeconds();
+				var labelTime = (graphManager._getCurrentTimelineDate().getTime() - graphManager.settings.timePeriod) + numberOfLabels*graphManager.settings.timeLabelsTick;
+				var labelDate = new Date(labelTime);
+
+				_labelsNodes.push(graphManager.svgManager.text(_labelsGroup, x1 + lineOffset, y1 + _lineSettings.scaleSize + _labelsSettings.fontSize, labelDate.toLocaleTimeString(), _labelsSettings ));
 				numberOfLabels--;
 			}
 		},
+		redrawLabels : function redrawLabels(graphArea){
+//			var numberOfLabels = Math.ceil(graphManager._xAxisDateTimeRange/graphManager.settings.timeLabelsTick);
+			var len = _labelsNodes.length;
+			var offset = graphArea._chartSVGSize.width/len; //len = numberOfLabels
+			// LOG(arguments,'',graphManager._getCurrentTimelineDate().toLocaleTimeString());
+			for(var i = len; i > 0; i--){
+				var labelTime = graphManager._getCurrentTimelineDate().getTime() -  i*graphManager.settings.timeLabelsTick;
+				var labelDate = new Date(labelTime);
+				$(_labelsNodes[i], graphManager.svgManager.root()).text(labelDate.toLocaleTimeString());
+			}
+		}
 
 	}
 }
@@ -854,13 +940,13 @@ $.extend(LineGraph.prototype, {
 
 	},
 	refreshGraph: function refreshGraph	(graphArea,numberOfNewValuesToDraw){
-		
 		var shouldUpscale = this.graphManager.calculateScale(graphArea._chartSVGSize.height, graphArea.graphPadding);
 		this.drawSeries(graphArea,this.graphManager.yScale,numberOfNewValuesToDraw);// it was on the bottom
 
 		if(shouldUpscale){
 			// LOG(arguments,"","UPSCALE ! ");
 			graphArea.upscale(this.graphManager._series, graphArea._chartSVGSize.height, this.graphManager._getMaxValueFromSeries());
+			this.graphManager._yAxis.refreshLabels(this.graphManager._getMinValueFromSeries(), this.graphManager._getMaxValueFromSeries());
 		}
 		
 		var previousEndTimeLineDate = this.graphManager._getCurrentTimelineDate(); 
@@ -877,6 +963,9 @@ $.extend(LineGraph.prototype, {
 		//refreshing time on legend area
 		if(this.graphManager._legendArea){
 			this.graphManager._legendArea.refreshTime();
+		}
+		if(this.graphManager.settings.xAxis){
+			this.graphManager._xAxis.redrawLabels(graphArea);
 		}
 		
 		if(this.xTranslate > 0 ){

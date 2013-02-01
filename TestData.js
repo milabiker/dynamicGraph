@@ -1,6 +1,6 @@
 toggle = true;
 var database = {};
-var generatorTime = 100;
+var generatorTime = 1000;
 var counterForSin = 1;
 var timer = setTimeout(generator,0,'seria_1');
 //var timer = setTimeout(generator,10,'seria_2');
@@ -20,11 +20,11 @@ function generator(seriesName){
 function generateMeasure(){
 	var tmp = {};
 	// -------- random -------------
-	// tmp.value = Math.random()*10;
+	tmp.value = Math.random()*10;
 	
 	// -------- sinus --------------
 	// tmp.value = Math.abs(Math.sin(counterForSin/10));
-	tmp.value = Math.sin(counterForSin/10)*10;
+	// tmp.value = Math.sin(counterForSin/10)*10;
 	// if(counterForSin > 100){
 	// 	tmp.value = Math.sin(counterForSin/10)*10;
 	// }else{
@@ -81,4 +81,24 @@ function getData(dateOfLastMesaurement){
 
 	}
 	return toReturn;
+}
+function log10(val) {
+  return Math.log(val) / Math.LN10;
+}
+function calculateYaxisStep(range, targetSteps){
+	var tempStep = range/targetSteps;
+
+	mag = Math.floor(log10(tempStep));
+	magPow = Math.pow(10, mag);
+
+	magMSD = tempStep/magPow + 0.5;
+
+	if(magMSD > 5.0){
+		magMSD = 10.0;
+	}else if(magMSD > 2.0){
+		magMSD = 5.0;
+	}else if (magMSD > 1.0){
+		magMSD = 2.0;
+	}
+	return magMSD*magPow;
 }

@@ -1,16 +1,16 @@
 $(function(){
-	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',800,300, {legend: false, title:true,titleText: "Dynamic graph", yAxis: true, timePeriod: 1000*40, timeLabelsTick : 1000*12, marker: 'circle'});
+	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',800,300, {legend: false, title:true,titleText: "Dynamic graph", yAxis: true, yAxisTicks: 9, timePeriod: 1000*60, timeLabelsTick : 1000*10, marker: 'circle'});
 	$("button.clear").click(function(){
 		svgline.clearUpdate();
 	});$("button.activate").click(function(){
 		svgline.activateUpdate();
 	});
-	var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200,{title:true}).draw();
-	$("button.clear1").click(function(){
-		svg2.clearUpdate();
-	});$("button.activate1").click(function(){
-		svg2.activateUpdate();
-	});
+	// var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200,{title:true, yAxis:true}).draw();
+	// $("button.clear1").click(function(){
+	// 	svg2.clearUpdate();
+	// });$("button.activate1").click(function(){
+	// 	svg2.activateUpdate();
+	// });
 //	svgline.setCallback(function(){});
 	svgline.draw();
 });
