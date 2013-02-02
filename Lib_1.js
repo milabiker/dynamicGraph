@@ -107,27 +107,86 @@
 
 function GraphManager(element, charttype, width, height, settings){
 	this.defaultSettings = {
-		grid : true,//false
-		horizontal_grid: true,//false
-		vertical_grid: true,//false
-		horizontal_labels:true,
-		vertical_labels:true,
-		labels_color: '#eee',
-		horizontal_unit: '', //(km/h),
-		background_color: '#222',
-		grid_color: 'blue',
-		marker : false,//circle/square',
-		marker_size: 5,
-		draw_axis: true,
-		label_rotation: 90,
-		label_size:10,
+		name : $(element).attr('id'),
 		timeLabelsTick: 1000*10, // e.g. every 1 min on graph
 		timePeriod : 1000*50, // (in milis)
-		name : $(element).attr('id'),
-		legend : false,
-		xAxis : true,
-		yAxisTicks : 4,
-		titleText : 'Chart title'
+		ControlPanelEnabled:true,
+		
+		xAxis : {
+			enabled : true,
+			type : 'timeAxis',
+			labelSettings : {
+				font : 'Arial',
+				textAnchor: 'middle',
+				fontSize: 11, 
+				stroke:'none', 
+				fill:'blue',
+				transform : 'rotate(0,0,0)'},
+			lineSettings : {
+				strokeWidth: 0.5, 
+				class_: 'axis',
+				stroke:'black', 
+				scaleSize : 5}
+			
+		},
+		// timeAxis : {},
+
+		chartOptions : {
+			grid : true,//false
+			gridSettings : {
+				fill: 'none', 
+				strokeDashArray:"2,2", 
+				stroke:"green", 
+				strokeOpacity:0.7,	 
+				strokeWidth:1 },
+			horizontal_grid: true,//false
+			vertical_grid: false,//false
+			background : {
+				fill : 'none',
+				zIndex : -1 }
+
+		},
+		yAxis : {
+			enabled : true,
+			title : false, // e.g. 'Sinus' (if false it will be not visible)
+			titleSettings : {
+				stroke:'none',  
+				textAnchor : 'middle', 
+
+				// writingMode: 'tb', 
+				// glyphOrientationVertical : 0
+			},
+			labelsEnabled :true,
+			ticks : 4,
+			labelSettings : { 
+				alignmentBaseline: 'middle', 
+				textAnchor : 'end', 
+				stroke:'none', 
+				fontSize: 10,
+				fill : 'red'},
+			lineSettings : {
+				stroke:'black', 
+				strokeWidth:0.5},
+			label_unit: '' //(km/h),
+			
+		},
+		dataSeries : {
+			seriesMarkers : ['circle'], /* circle, square */ //array length should equal number of series to set all markers
+			markerSize : 5, 
+			seriesPathSettings : {strokeWidth : 2, fill:'none'}
+		},
+		title : {
+			enabled : true,
+			text : 'Chart title',
+			textSettings : { 
+				fill : 'black',
+				stroke : 'none',
+				fontSize : 17,
+				paddingTop : 5,
+					// verticalPos : this.svgManager._width()/2,
+				textAnchor : 'middle'}
+		},
+		draw_axis: true,
 	}
 	//===================
 	// attaching svg 
@@ -137,13 +196,14 @@ function GraphManager(element, charttype, width, height, settings){
 	mysvg._container = mysvg._svg;
 	this.svgManager = mysvg;
 	this.charttype = charttype;
-	this.settings = $.extend({}, this.defaultSettings, settings);
+	this.settings = $.extend(true,{}, this.defaultSettings, settings);
+	LOG(arguments,'',"settings = " + JSON.stringify(this.settings));
 
 	// LOG(arguments,'',"NAME = " + this.settings.name);
 	
 	// TODO------- set up legend or title visible (temporary) ---------------------
 	this.isLegend = this.settings.legend || false;
-	this.isTitle = this.settings.title || false;
+	this.isTitle = this.settings.title.enabled || false;
 	//-----------------
 	this._series = [];
 	// TODO remove after tests
@@ -156,13 +216,13 @@ function GraphManager(element, charttype, width, height, settings){
 	this._setDateTimeRange();
 	// this._xAxis = new Axis(this,this.settings.ticks);
 	this._xAxis = new TimeAxis(this);
-	this._yAxis = new Axis(this,this.settings.yAxisTicks);
+	this._yAxis = new Axis(this,this.settings.yAxis.ticks);
 	// if value is < 0 it means 100% of svg size if  value is = 0 then  relative value 
 	this.regionsSize = {
 		titleArea : { width : -1, height : 30},
 		legendArea : { width : -1, height: -1},
 		graphArea : {width : 0, height : 0},
-		yAxisArea : {width : 60, height : 0},
+		yAxisArea : {width : this.settings.yAxis.title ? 60 : 40, height : 0},
 		xAxisArea : {width : this.svgManager._width() - 50, height : 35}
 		};
 	this.regions = {
@@ -199,24 +259,32 @@ $.extend(GraphManager.prototype,{
 
 		this.activateUpdate();//this.callback();
 		this.charttype.draw(this._graphArea);
-		if(this.settings.grid){
+		if(this.settings.chartOptions.grid){
 			this._defineDefs(this._graphArea);
 		}
-
+		if(this.settings.ControlPanelEnabled){
+			this._controlPanel = new ControlPanel(this);
+		}
 		/* returning this to be able to use it after other SVGDynamicGraph function */		
 		return this;
 	},
 	_defineDefs : function _defineDefs(graphArea) {
 		this.defs = this.svgManager.defs(this.settings.name + '_defs');
 		var horizontalGridlineLenght = graphArea._chartSVGSize.width/Math.ceil(this._xAxisDateTimeRange/this.settings.timeLabelsTick);
-		var verticalGridlineLenght = graphArea._chartSVGSize.height/this.settings.yAxisTicks;
+		var verticalGridlineLenght = graphArea._chartSVGSize.height/this.settings.yAxis.ticks;
+
 		LOG(arguments,'','gridlineHorizontalLenght = ' + horizontalGridlineLenght);
+		LOG(arguments,'','verticalGridlineLenght = ' + verticalGridlineLenght + " yAxis = " + this.settings.yAxis);
 		var gridlines = this.svgManager.pattern(this.defs, "gridLines", 0,0,horizontalGridlineLenght,verticalGridlineLenght, 0,0,0,0, { class_: "gridlines", patternUnits: 'userSpaceOnUse'});
-		var line1 = this.svgManager.line(gridlines, 0,0,horizontalGridlineLenght,0,{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1});
-		var line2 = this.svgManager.line(gridlines, 0,0,0,verticalGridlineLenght,{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1});
+		if(this.settings.chartOptions.horizontal_grid){
+			var line1 = this.svgManager.line(gridlines, 0,0,horizontalGridlineLenght,0,this.settings.chartOptions.gridSettings /*{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1}*/);
+		}
+		if(this.settings.chartOptions.vertical_grid){
+			var line2 = this.svgManager.line(gridlines, 0,0,0,verticalGridlineLenght, this.settings.chartOptions.gridSettings/*{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.4, strokeWidth:1}*/);
+		}
 
 		var marker = this.svgManager.marker(this.defs, 'circle', 8, 8, 15, 15, 'auto',{ markerUnits:"strokeWidth"});
-		var markerCircle = this.svgManager.circle(marker, 8,8,2, {fill:"white", stroke:'red', strokeWidth:'1'});
+		var markerCircle = this.svgManager.circle(marker, 8,8,1, {stroke: 'green', fill: 'none', strokeWidth:'1'});
 
 	},	
 	/**
@@ -248,7 +316,7 @@ $.extend(GraphManager.prototype,{
 	activateUpdate : function activateUpdate(){
 		this.isUpdateActive = true;
 		
-		this._timerID = setTimeout(this.callback, 1000, this);
+		this._timerID = setTimeout(this.callback, 2000, this);
 		console.log("TIMER id " + this._timerID);
 	},
 	callback :function callback(inst){
@@ -393,7 +461,7 @@ $.extend(GraphManager.prototype,{
 		var range = this.calculateRange();
 		var chartPadding = graphArea.graphPadding*graphArea._chartSVGSize.height;
 		var paddingValue =  chartPadding * range / (graphArea._chartSVGSize.height - 2*chartPadding);
-		LOG(arguments,'',"min = " + min + " max = " + max + " | paddingValue = " + paddingValue + " | chartPadding = " + chartPadding + " | svgSize = " + graphArea._chartSVGSize.height + " | padding = " + graphArea.graphPadding);
+		// LOG(arguments,'',"min = " + min + " max = " + max + " | paddingValue = " + paddingValue + " | chartPadding = " + chartPadding + " | svgSize = " + graphArea._chartSVGSize.height + " | padding = " + graphArea.graphPadding);
 		var realRange = range + (2*paddingValue);
 		var realMinValue = min - paddingValue;
 		var realMaxValue = max + paddingValue;
@@ -401,7 +469,7 @@ $.extend(GraphManager.prototype,{
 		var obj = { range : realRange,
 				minValue : realMinValue,
 				maxValue : realMaxValue};
-		LOG(arguments,'', " obj = " + JSON.stringify(obj));
+		// LOG(arguments,'', " obj = " + JSON.stringify(obj));
 		return obj;
 	}
 });
@@ -414,7 +482,7 @@ function GraphArea(graphManager){
 	this.padding = 0.1;
 	this.paddingLeft=0.1;
 	this.paddingRight = 0.02;
-	this.paddingRightPx = 10;
+	this.paddingRightPx = 25;
 	this.paddingBottom = 0.15;
 	this.paddingTop = 0.01;
 	this.graphPadding = 0.1;
@@ -458,13 +526,13 @@ $.extend(GraphArea.prototype,{
 
 		// this._graphAreaGroup = this.svgManager.group(this._chartSVG, {class_: this.graphManager.settings.name+'graphArea'});
 		var titleEnabled = this.graphManager.isTitle;
-		var yAxisEnabled = this.graphManager.settings.yAxis;
-		var xAxisEnabled = this.graphManager.settings.xAxis;
+		var yAxisEnabled = this.graphManager.settings.yAxis.enabled;
+		var xAxisEnabled = this.graphManager.settings.xAxis.enabled;
 		var titleHeight = this.graphManager.regionsSize.titleArea.height;
 		var yAxisWidth = this.graphManager.regionsSize.yAxisArea.width;
 		var xAxisHeight = this.graphManager.regionsSize.xAxisArea.height;
 
-		var translate = "translate( 0," + (titleEnabled ? titleHeight : 0) + ")";
+		var translate = "translate( 0," + (titleEnabled ? titleHeight : 10) + ")";
 		this._group = this.svgManager.group(null, {transform : translate, class_ : this.graphManager.settings.name+'graphRegion'});
 
 		var tmpChartSvgHeight = this.svgManager._height() - (titleEnabled ? titleHeight : 0) - (xAxisEnabled ? xAxisHeight : 0); 
@@ -476,12 +544,15 @@ $.extend(GraphArea.prototype,{
 									0/*as padding */,
 									this._chartSVGSize.width,
 									this._chartSVGSize.height );
+		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize.width,this._chartSVGSize.height, this.graphManager.settings.chartOptions.background);
 		this._graphAreaGroup = this.svgManager.group(this._chartSVG, {class_: this.graphManager.settings.name+'graphArea'});
-
+		
 
 	},
 	_drawGridLines : function draw(){
-		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize.width,this._chartSVGSize.height,{class_: "graphBackground",fill: 'none', fill: 'url(#gridLines)'});
+		if(this.graphManager.settings.chartOptions.grid){
+			var gridlines = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize.width,this._chartSVGSize.height,{class_: "graphBackground",fill: 'none', fill: 'url(#gridLines)'});
+		}
 		
 	},
 	_drawAxis: function _drawAxis(axis,id, x1,y1,x2,y2, dateOfLastUpdate){
@@ -491,13 +562,16 @@ $.extend(GraphArea.prototype,{
 		var y2 = parseInt(y2);
 		var gline = this.svgManager.group(this._group,{class_: "axis"})
 		axis._line = this.svgManager.line(gline, x1, y1, x2, y2, axis._lineSettings);
-		var len = 10;
+		var len = 5;
 		if(x1 == x2 ){
 			// LOG(arguments,'','Horizontal Axis');
 			var axisLength = y2 - y1;
-			var offset = Math.round(axisLength/axis._ticks);
+			// var offset = Math.round(axisLength/axis._ticks);
+			var offset = axisLength/axis._ticks;
 			var counter = 0;
-			this.svgManager.text(gline,10, 100, "A x i s", {stroke:'none',  textAnchor : 'middle', writingMode: 'tb' , glyphOrientationVertical : 0});
+			if(axis._title){
+				this.svgManager.text(gline,20, this._chartSVGSize.height/2, axis._title, $.extend(true, {transform : 'rotate(-90, 20, ' + this._chartSVGSize.height/2 + ')'},this.graphManager.settings.yAxis.titleSettings));
+			}
 
 			//-----
 				// var objWithSizes = this.graphManager.calculateRangeForYAxis(this);
@@ -512,8 +586,8 @@ $.extend(GraphArea.prototype,{
 			while(counter <= axis._ticks){
 				// LOG(arguments,'', labels[counter]);
 				lineOffset = counter*offset;
-				this.svgManager.line(gline, x1-len, y2 - lineOffset, x1, y2 - lineOffset);
-				axis._labelsNodes.push(this.svgManager.text(gline, x1-len - 2, y2 - lineOffset, "...", { textAnchor : 'end', stroke:'none', fontSize: 10}));
+				this.svgManager.line(gline, x1-len, y2 - lineOffset, x1, y2 - lineOffset, axis._lineSettings);
+				axis._labelsNodes.push(this.svgManager.text(gline, x1-len - 2, y2 - lineOffset, "...", axis._labelsSettings/*{ alignmentBaseline: 'middle', textAnchor : 'end', stroke:'none', fontSize: 10}*/));
 				counter++;
 			}
 		}else if( y1 == y2){			
@@ -522,18 +596,21 @@ $.extend(GraphArea.prototype,{
 			var counter = 0;
 			while(counter < axis._ticks){
 				lineOffset = counter*offset;
-				this.svgManager.line(gline, x1 + lineOffset, y1, x1 + lineOffset, y1+len, {strokeWidth: 1});
+				this.svgManager.line(gline, x1 + lineOffset, y1, x1 + lineOffset, y1+len, {strokeWidth: 0.5});
 				counter++;
 			}
 			
 		}
 	},
 	upscale : function upscale(series,svgSize,maxValue){
+		LOG(arguments,'',"seriesLength = " + series.length);
 		for(var i=0, len=series.length; i < len; i++){
+			LOG(arguments,'',"series[" + i + "] = " + series[i].getName());
 			// LOG(arguments,'',"upscale of " + key);
 			var element = series[i].svgElement();
 			var measurements = series[i].getMeasurmentsToDraw(-1);
-			// console.log("##################################################################################");
+			console.log("##################################################################################");
+			console.log("measurements.length = " + measurements.length);
 			for(var i=0,len = measurements.length; i < len; i++){
 				// console.log("------------------------------------------------------------------------------");
 				// LOG(arguments,'old y value', element.pathNode.pathSegList.getItem(i).y);
@@ -551,10 +628,13 @@ $.extend(GraphArea.prototype,{
 function TitleArea(graphManager){
 	this.svgManager = graphManager.svgManager;
 	this.graphManager = graphManager;
-	this.settings = { fontSize : 17,
+	this.settings = graphManager.settings.title.textSettings;
+	this.verticalPos = this.svgManager._width()/2;
+	this.paddingTop = 5;
+				/* { fontSize : 17,
 					paddingTop : 5,
 					verticalPos : this.svgManager._width()/2,
-					textAnchor : 'middle'}
+					textAnchor : 'middle'}*/
 	};
 $.extend(TitleArea.prototype,{
 	_draw : function _draw(){
@@ -569,7 +649,8 @@ $.extend(TitleArea.prototype,{
 		// this.svgManager.rect(this._group,0,0,size[0],size[1]);
 		// this.svgManager.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'});
 		this._group = this.svgManager.group(null, {class_: "titleArea"});
-		this.svgManager.text(this._group, this.settings.verticalPos, this.settings.paddingTop + this.settings.fontSize, this.graphManager.settings.titleText , {fontFamily: 'Verdana', fontSize : this.settings.fontSize, stroke:'none',textAnchor : 'middle'}); 		
+		this.svgManager.text(this._group, this.verticalPos, this.paddingTop + this.settings.fontSize, this.graphManager.settings.title.text , this.settings/*{fontFamily: 'Verdana', fontSize : this.settings.fontSize, stroke:'none',textAnchor : 'middle'}*/); 		
+		LOG(arguments,'',this.graphManager.settings.title.text);
 	}
 });
 //=======================================================================================================================
@@ -589,13 +670,14 @@ $.extend(LegendArea.prototype,{
 		// this.svgManager.rect(this._group,0,0,this.svgManager._width()*this.graphManager._getRegionWidthRatio('legend'),this.svgManager._height()*this.graphManager._getRegionHeightRatio('legend'));
 		// this.svgManager.text(this._group, 10, 100, "Legend", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'}); 
 		// this.svgManager.text(this._group,10,200, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'white', id:'time'});
-		this._group = this.svgManager.group(null,{ transform : 'translate( 0,' + (this.svgManager._height() - 25) + ')', class_ : 'legendArea', fill : 'blue'});
-		this.svgManager.text(this._group, 10, 10, "Legend ", { stroke : 'none', fontSize : 15});
-		this.svgManager.text(this._group,10,20, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'black', class_:'time'});
+		
+		// this._group = this.svgManager.group(null,{ transform : 'translate( 0,' + (this.svgManager._height() - 25) + ')', class_ : 'legendArea', fill : 'blue'});
+		// this.svgManager.text(this._group, 10, 10, "Legend ", { stroke : 'none', fontSize : 15});
+		// this.svgManager.text(this._group,10,20, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'black', class_:'time'});
 	},
 	// temporary
 	refreshTime : function refreshTime(){	
-		$('.time',this.svgManager.root()).text(this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes() + " : " + this.graphManager._getCurrentTimelineDate().getSeconds());
+		// $('.time',this.svgManager.root()).text(this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes() + " : " + this.graphManager._getCurrentTimelineDate().getSeconds());
 	}
 });
 
@@ -605,14 +687,15 @@ function Axis(graphManager, ticks){
 	this.svgManager = graphManager.svgManager;
 	this.graphManager = graphManager;
 	this._line;
-	this._lineSettings = {stroke:'green', strokeWidth:1};
+	this._lineSettings = graphManager.settings.yAxis.lineSettings/*{stroke:'gray', strokeWidth:0.7}*/;
 	this._minValue;
 	this._maxValue;
 	this._labels;
 	this._labelsNodes = [];
-	this._labelsSettings = {};
+	this._labelsSettings = graphManager.settings.yAxis.labelSettings;
+	LOG(arguments,'','labelSettings = ' + JSON.stringify(this._labelsSettings));
 	this._ticks = ticks;
-	this._title = '';
+	this._title = graphManager.settings.yAxis.title;
 	this._tittleSettings = {};
 }
 $.extend(Axis.prototype,{
@@ -712,8 +795,8 @@ function TimeAxis(graphManager){
 	var _axisGroup;
 	var _labelsGroup;
 	var _labelsNodes = [];
-	var _labelsSettings = {strokeWidth: 1, textAnchor: 'middle', fontSize: 12, stroke:'none', fill:'blue'};
-	var _lineSettings = {class_: 'axis',stroke:'gray', scaleSize : 5};
+	var _labelsSettings = graphManager.settings.xAxis.labelSettings/*{ textAnchor: 'middle', fontSize: 12, stroke:'none', fill:'blue'}*/;
+	var _lineSettings = graphManager.settings.xAxis.lineSettings/*{ strokeWidth: 0.5, class_: 'axis',stroke:'red', scaleSize : 5}*/;
 	return {
 		drawTimeAxis : function drawTimeAxis(graphArea,x1,y1,x2,y2,settings){
 			_axisGroup = graphManager.svgManager.group(graphManager._graphArea._group, 'timeAxis', {class_ : "timeAxis"});
@@ -726,14 +809,19 @@ function TimeAxis(graphManager){
 			// LOG(arguments,'',"numberOfLabels = " + numberOfLabels + " | offset = " + offset);
 			// var clip =graphManager.svgManager.clipPath(_labelsGroup, "axisclipPath");
 			// graphManager.svgManager.rect(clip, x1, y1, x2)
+			var isFirstLabel = true;
 			while(numberOfLabels >= 0){
 				var lineOffset = numberOfLabels*offset;
-				LOG(arguments,"","draw divisor | lineOffset = " + lineOffset);
-				graphManager.svgManager.line(_labelsGroup, x1 + lineOffset, y1, x1 + lineOffset, y1+_lineSettings.scaleSize, {strokeWidth: 1});
+				// LOG(arguments,"","draw divisor | lineOffset = " + lineOffset);
+				graphManager.svgManager.line(_labelsGroup, x1 + lineOffset, y1, x1 + lineOffset, y1+_lineSettings.scaleSize, _lineSettings/*{strokeWidth: 0.5}*/);
 				var labelTime = (graphManager._getCurrentTimelineDate().getTime() - graphManager.settings.timePeriod) + numberOfLabels*graphManager.settings.timeLabelsTick;
 				var labelDate = new Date(labelTime);
-
-				_labelsNodes.push(graphManager.svgManager.text(_labelsGroup, x1 + lineOffset, y1 + _lineSettings.scaleSize + _labelsSettings.fontSize, labelDate.toLocaleTimeString(), _labelsSettings ));
+				if(!isFirstLabel){
+					_labelsNodes.push(graphManager.svgManager.text(_labelsGroup, x1 + lineOffset, y1 + _lineSettings.scaleSize + _labelsSettings.fontSize, labelDate.toLocaleTimeString(), _labelsSettings ));
+				}else{
+					_labelsNodes.push(graphManager.svgManager.text(_labelsGroup, x1 + lineOffset, y1 + _lineSettings.scaleSize + _labelsSettings.fontSize, labelDate.toLocaleTimeString(), _labelsSettings ));
+					isFirstLabel = false;
+				}
 				numberOfLabels--;
 			}
 		},
@@ -742,7 +830,7 @@ function TimeAxis(graphManager){
 			var len = _labelsNodes.length;
 			var offset = graphArea._chartSVGSize.width/len; //len = numberOfLabels
 			// LOG(arguments,'',graphManager._getCurrentTimelineDate().toLocaleTimeString());
-			for(var i = len; i > 0; i--){
+			for(var i = len; i >= 0; i--){
 				var labelTime = graphManager._getCurrentTimelineDate().getTime() -  i*graphManager.settings.timeLabelsTick;
 				var labelDate = new Date(labelTime);
 				$(_labelsNodes[i], graphManager.svgManager.root()).text(labelDate.toLocaleTimeString());
@@ -760,6 +848,7 @@ function DataSeries(measurements, name){
 	var _name = name ;
 	var _dateOfLastUpdate = new Date(measurements.last().timestamp);
 	var _element;
+	var _seriesColor = get_random_color();
 	// LOG(arguments,'',"_minValue = " + _minValue + " | _maxValue = " + _maxValue);
 	//var _dateOfLastDrawedMeasure; // TODO to consider
 
@@ -846,6 +935,12 @@ function DataSeries(measurements, name){
 		/**
 		*
 		*/
+		getSeriesColor : function getseriesColor () {
+			return _seriesColor;
+		},
+		/**
+		*
+		*/
 		getDateoFLastMeasurment: function getDateoFLastMeasurment(){
 			return _dateOfLastUpdate;
 		},
@@ -896,7 +991,8 @@ $.extend(LineGraph.prototype, {
 					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize.height,maxValue, measurementsToDraw[0].value,graphArea.graphPadding);
 					var tmpPath = graphArea.svgManager.createPath();
 					var element = { 'path' : tmpPath,
-									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y), {fill: 'none', stroke: 'gray', strokeWidth: 1, markerMid: this.graphManager.settings.marker ? 'url(#'+this.graphManager.settings.marker+ ')' : 'none'}) };
+									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y), /*{fill: 'none', stroke: 'gray', strokeWidth: 1,*/ 
+									$.extend({}, { stroke : series.getSeriesColor(), markerMid: this.graphManager.settings.dataSeries.seriesMarkers[0] ? 'url(#'+this.graphManager.settings.dataSeries.seriesMarkers[0]+ ')' : 'none' } , this.graphManager.settings.dataSeries.seriesPathSettings)) };
 					series.svgElement(element);
 					isFirstValueOfSeries = true;
 				}
@@ -910,6 +1006,7 @@ $.extend(LineGraph.prototype, {
 					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize.height,maxValue,measurementsToDraw[i].value,graphArea.graphPadding);
 					// LOG(arguments,"","y = " + y);
 					element.path.line(x,y).path();
+					// this.graphManager.svgManager.circle(graphArea._graphAreaGroup, x,y,2);
 				}
 
 				series.setLastMeasurmentXpoint(x);
@@ -925,22 +1022,24 @@ $.extend(LineGraph.prototype, {
 		// 					graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
 		// 					parseInt(graphArea._chartSVGSize.width)+parseInt(graphArea._chartSVG.getAttribute('x')), 
 		// 					graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
-		this.graphManager._xAxis.drawTimeAxis(graphArea, 
-							parseInt(graphArea._chartSVG.getAttribute('x')),
-							// graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
-							// parseInt(graphArea._chartSVGSize.width)+parseInt(graphArea._chartSVG.getAttribute('x')), 
-							// graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
-							graphArea._chartSVGSize.height,
-							graphArea._chartSVGSize.width + parseInt(graphArea._chartSVG.getAttribute('x')),
-							graphArea._chartSVGSize.height
-
-							);
-		if(this.graphManager.settings.yAxis)
-		graphArea._drawAxis(this.graphManager._yAxis,'yAxis', 
-							graphArea._chartSVG.getAttribute('x'), 
-							graphArea._chartSVG.getAttribute('y'),
-							graphArea._chartSVG.getAttribute('x'), 
-							parseInt(graphArea._chartSVGSize.height)+parseInt(graphArea._chartSVG.getAttribute('y')));
+		if(this.graphManager.settings.xAxis.type == 'timeAxis'){
+			this.graphManager._xAxis.drawTimeAxis(graphArea, 
+								parseInt(graphArea._chartSVG.getAttribute('x')),
+								// graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop),
+								// parseInt(graphArea._chartSVGSize.width)+parseInt(graphArea._chartSVG.getAttribute('x')), 
+								// graphArea._chartSVGSize.height+calculateRelativeValue(graphArea.svgManager._width(),graphArea.paddingTop));
+								graphArea._chartSVGSize.height,
+								graphArea._chartSVGSize.width + parseInt(graphArea._chartSVG.getAttribute('x')),
+								graphArea._chartSVGSize.height);
+		}
+		if(this.graphManager.settings.yAxis){
+			graphArea._drawAxis(this.graphManager._yAxis,'yAxis', 
+								graphArea._chartSVG.getAttribute('x'), 
+								graphArea._chartSVG.getAttribute('y'),
+								graphArea._chartSVG.getAttribute('x'), 
+								parseInt(graphArea._chartSVGSize.height)+parseInt(graphArea._chartSVG.getAttribute('y')));
+			
+		}
 
 	},
 	addSeries: function addSeries(){
@@ -984,10 +1083,10 @@ $.extend(LineGraph.prototype, {
 
 		//tempoarary
 		//refreshing time on legend area
-		if(this.graphManager._legendArea){
-			this.graphManager._legendArea.refreshTime();
-		}
-		if(this.graphManager.settings.xAxis){
+		// if(this.graphManager._legendArea){
+		// 	this.graphManager._legendArea.refreshTime();
+		// }
+		if(this.graphManager.settings.xAxis.enabled){
 			this.graphManager._xAxis.redrawLabels(graphArea);
 		}
 		
@@ -996,7 +1095,17 @@ $.extend(LineGraph.prototype, {
 		}				
 	}
 });
+function ControlPanel(graphManager){
+	this.graphManager = graphManager;
+	this.startStopButton = graphManager.svgManager.rect(graphManager.svgManager._width() - 40, 5,35 , graphManager.regionsSize.titleArea.height, {fill : 'red'}  );
+	$(this.startStopButton).mouseover(function() {
+		$(this).fadeIn();
+	});
+	$(this.startStopButton).mouseout(function () {
+		$(this).fadeOut();
+	});
 
+}
 //----------------------------------------------------------------------------
 function calculateRelativeValue(ratio, wrapperSize,padding){
 	if(padding != undefined){
@@ -1060,7 +1169,18 @@ function LOG(args, description, message){
 	console.log("----------------------------");
 	console.log("## > "+args.callee.name + "| " + description + " | " + "\n\t " + message + "\n----------------------------");
 }
-
+/**
+* Helper function to generate random colors for series
+*/
+function get_random_color(background) {
+  function c() {
+    return Math.floor(Math.random()*256).toString(16)
+  }
+  do{
+	  var color = "#"+c()+c()+c();
+  }while(color == background);
+  return color;
+}
 /**
 * extend(values)
 * # Function to extend array by new array of values

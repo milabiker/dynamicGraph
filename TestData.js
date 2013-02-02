@@ -1,38 +1,40 @@
 toggle = true;
 var database = {};
-var generatorTime = 100;
+var generatorTime = 500;
 var counterForSin = 1;
-var timer = setTimeout(generator,0,'seria_1');
-// var timer = setTimeout(generator,1000,'seria_2');
+var timer = setTimeout(generator,0,{seriesName : 'seria_1', dataType : "sinus"});
+var timer = setTimeout(generator,1000,{seriesName : 'seria_2', dataType : "random"});
 
-function generator(seriesName){
+function generator(obj){
 	//console.log("generator on " + seriesName);
-	var measure = generateMeasure();
-	if(database[seriesName] == undefined){
-		database[seriesName] = [];
+	var measure = generateMeasure(obj.dataType);
+	if(database[obj.seriesName] == undefined){
+		database[obj.seriesName] = [];
 	}
-	database[seriesName].push(measure);
-	timer = setTimeout(generator,generatorTime,seriesName);
+	database[obj.seriesName].push(measure);
+	timer = setTimeout(generator,generatorTime,{ seriesName : obj.seriesName, dataType : obj.dataType });
 }
 /**
 * returns one measure
 */
-function generateMeasure(){
+function generateMeasure(dataType){
 	var tmp = {};
+	if(dataType == "random"){
 	// -------- random -------------
-	// tmp.value = Math.random()*10;
-	
-	// -------- sinus --------------
-	// tmp.value = Math.abs(Math.sin(counterForSin/10));
-	// tmp.value = Math.sin(counterForSin/10)*10;
-	if(counterForSin > 100){
-		tmp.value = Math.sin(counterForSin/10)*10;
-	}else{
-		tmp.value = Math.sin(counterForSin/10);
+		tmp.value = Math.random()*10;
+	}else if(dataType == "sinus"){
+		// -------- sinus --------------
+		// tmp.value = Math.abs(Math.sin(counterForSin/10));
+		// tmp.value = Math.sin(counterForSin/10)*10;
+		if(counterForSin > 100){
+			tmp.value = Math.sin(counterForSin/10)*10;
+		}else{
+			tmp.value = Math.sin(counterForSin/10);
+		}		
+	}else if( dataType == "number"){
+		// -------- number ------------
+		// tmp.value = counterForSin;
 	}
-	
-	// -------- number ------------
-	// tmp.value = counterForSin;
 	
 	// 1 or 2
 		// if(toggle){
