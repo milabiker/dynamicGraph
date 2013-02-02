@@ -15,7 +15,7 @@ $(function(){
 			title : "Sinus"
 		},
 		chartOptions : {
-			background : { fill : '#eee'}
+			// background : { fill : '#eee'}
 		}
 	});
 	$("button.clear").click(function(){
@@ -30,7 +30,7 @@ $(function(){
 	
 	svgline.draw();
 	
-	var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200);
+	var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',800,400, { timePeriod : 1000*10, timeLabelsTick: 1000, callbackTime : 100});
 	$("button.clear1").click(function(){
 		svg2.clearUpdate();
 	});$("button.activate1").click(function(){

@@ -121,12 +121,12 @@ function GraphManager(element, charttype, width, height, settings){
 				textAnchor: 'middle',
 				fontSize: 11, 
 				stroke:'none', 
-				fill:'blue',
+				fill:'MidnightBlue',
 				transform : 'rotate(0,0,0)'},
 			lineSettings : {
 				strokeWidth: 0.5, 
 				class_: 'axis',
-				stroke:'black', 
+				stroke:'MidnightBlue', 
 				scaleSize : 5}
 			
 		},
@@ -164,7 +164,7 @@ function GraphManager(element, charttype, width, height, settings){
 				textAnchor : 'end', 
 				stroke:'none', 
 				fontSize: 10,
-				fill : 'red'},
+				fill : 'MidnightBlue'},
 			lineSettings : {
 				stroke:'black', 
 				strokeWidth:0.5},
@@ -172,7 +172,7 @@ function GraphManager(element, charttype, width, height, settings){
 			
 		},
 		dataSeries : {
-			seriesMarkers : [false], /* circle, square */ //array length should equal number of series to set all markers
+			seriesMarkers : [false, 'circle'], /* circle, square */ //array length should equal number of series to set all markers
 			markerSize : 5, 
 			seriesPathSettings : {strokeWidth : 2, fill:'none'}
 		},
@@ -182,7 +182,7 @@ function GraphManager(element, charttype, width, height, settings){
 			textSettings : { 
 				fill : 'black',
 				stroke : 'none',
-				fontSize : 17,
+				fontSize : 15,
 				paddingTop : 5,
 					// verticalPos : this.svgManager._width()/2,
 				textAnchor : 'middle'}
@@ -198,7 +198,6 @@ function GraphManager(element, charttype, width, height, settings){
 	this.svgManager = mysvg;
 	this.charttype = charttype;
 	this.settings = $.extend(true,{}, this.defaultSettings, settings);
-	LOG(arguments,'',"settings = " + JSON.stringify(this.settings));
 
 	// LOG(arguments,'',"NAME = " + this.settings.name);
 	
@@ -215,6 +214,7 @@ function GraphManager(element, charttype, width, height, settings){
 	this._currentTimelineDate = new Date();
 	this._xAxisDateTimeRange;
 	this._setDateTimeRange();
+	this.uniqueSeriesID = 0;
 	// this._xAxis = new Axis(this,this.settings.ticks);
 	this._xAxis = new TimeAxis(this);
 	this._yAxis = new Axis(this,this.settings.yAxis.ticks);
@@ -274,8 +274,6 @@ $.extend(GraphManager.prototype,{
 		var horizontalGridlineLenght = graphArea._chartSVGSize.width/Math.ceil(this._xAxisDateTimeRange/this.settings.timeLabelsTick);
 		var verticalGridlineLenght = graphArea._chartSVGSize.height/this.settings.yAxis.ticks;
 
-		LOG(arguments,'','gridlineHorizontalLenght = ' + horizontalGridlineLenght);
-		LOG(arguments,'','verticalGridlineLenght = ' + verticalGridlineLenght + " yAxis = " + this.settings.yAxis);
 		var gridlines = this.svgManager.pattern(this.defs, "gridLines", 0,0,horizontalGridlineLenght,verticalGridlineLenght, 0,0,0,0, { class_: "gridlines", patternUnits: 'userSpaceOnUse'});
 		if(this.settings.chartOptions.horizontal_grid){
 			var line1 = this.svgManager.line(gridlines, 0,0,horizontalGridlineLenght,0,this.settings.chartOptions.gridSettings /*{fill: 'none', strokeDashArray:"2,2", stroke:"green", strokeOpacity:0.7,	 strokeWidth:1}*/);
@@ -305,7 +303,7 @@ $.extend(GraphManager.prototype,{
 					series.update(dataSeries[key]);
 				}else{
 					//LOG(arguments,'',"dataSeries[key] = " + dataSeries[key] + "name: " + key + "fisrt value = " + dataSeries[key][0].value);
-					this._series.push(new DataSeries(dataSeries[key],key));
+					this._series.push(new DataSeries(dataSeries[key],key,this.uniqueID()));
 				}
 				var tmp = {};
 				tmp[key] = dataSeries[key].length;
@@ -472,7 +470,17 @@ $.extend(GraphManager.prototype,{
 				maxValue : realMaxValue};
 		// LOG(arguments,'', " obj = " + JSON.stringify(obj));
 		return obj;
-	}
+	},
+	getColorForSeries: function getColorForSeries(id){
+		id >= COLOR_ARRAY.length ? id = 0 : null;
+		return COLOR_ARRAY[id];
+	},
+	/**
+	* Helper function to generate uniqueID
+	*/
+	uniqueID : function uniqueID () {
+		return this.uniqueSeriesID++;
+	},
 });
 
 //===============================================================================================================
@@ -604,15 +612,11 @@ $.extend(GraphArea.prototype,{
 		}
 	},
 	upscale : function upscale(series,svgSize,maxValue){
-		LOG(arguments,'',"seriesLength = " + series.length);
 		for(var i=0, len=series.length; i < len; i++){
-			LOG(arguments,'',"series[" + i + "] = " + series[i].getName());
 			// LOG(arguments,'',"upscale of " + key);
 			var element = series[i].svgElement();
 
 			var measurements = series[i].getMeasurmentsToDraw(-1);
-			console.log("##################################################################################");
-			console.log("measurements.length = " + measurements.length);
 			for(var j=0,l = measurements.length; j < l; j++){
 				// console.log("------------------------------------------------------------------------------");
 				// LOG(arguments,'old y value', element.pathNode.pathSegList.getItem(i).y);
@@ -652,7 +656,6 @@ $.extend(TitleArea.prototype,{
 		// this.svgManager.text(this._group, 10, 25, "Title", {fontFamily: 'Verdana', fontSize: '25', fill: 'yellow', stroke: 'none'});
 		this._group = this.svgManager.group(null, {class_: "titleArea"});
 		this.svgManager.text(this._group, this.verticalPos, this.paddingTop + this.settings.fontSize, this.graphManager.settings.title.text , this.settings/*{fontFamily: 'Verdana', fontSize : this.settings.fontSize, stroke:'none',textAnchor : 'middle'}*/); 		
-		LOG(arguments,'',this.graphManager.settings.title.text);
 	}
 });
 //=======================================================================================================================
@@ -695,7 +698,6 @@ function Axis(graphManager, ticks){
 	this._labels;
 	this._labelsNodes = [];
 	this._labelsSettings = graphManager.settings.yAxis.labelSettings;
-	LOG(arguments,'','labelSettings = ' + JSON.stringify(this._labelsSettings));
 	this._ticks = ticks;
 	this._title = graphManager.settings.yAxis.title;
 	this._tittleSettings = {};
@@ -842,8 +844,9 @@ function TimeAxis(graphManager){
 	}
 }
 // ## New approach to get immutable vars (closures!)
-function DataSeries(measurements, name){
-	var _id = uniqueID();
+function DataSeries(measurements, name, id){
+	var _id = id;
+	LOG(arguments,name,"id = " + id);
 	var _measurements = measurements; // e.g. [ { value : 0.92, timestamp : 12435436 }];
 	var _lastMeasurementXpoint = 0;
 	var _maxValue = Math.max.apply(Math,_getValues(measurements));
@@ -998,7 +1001,7 @@ $.extend(LineGraph.prototype, {
 					var tmpPath = graphArea.svgManager.createPath();
 					var element = { 'path' : tmpPath,
 									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y),
-									$.extend({}, { stroke : series.getSeriesColor(), markerMid: this.graphManager.settings.dataSeries.seriesMarkers[0] ? 'url(#'+this.graphManager.settings.dataSeries.seriesMarkers[0]+ ')' : 'none' } , this.graphManager.settings.dataSeries.seriesPathSettings)) };
+									$.extend({}, { stroke : this.graphManager.getColorForSeries(series.getSeriesID()), markerMid: this.graphManager.settings.dataSeries.seriesMarkers[0] ? 'url(#'+this.graphManager.settings.dataSeries.seriesMarkers[0]+ ')' : 'none' } , this.graphManager.settings.dataSeries.seriesPathSettings)) };
 					series.svgElement(element);
 					isFirstValueOfSeries = true;
 				}
@@ -1187,16 +1190,7 @@ function get_random_color(background) {
   }while(color == background);
   return color;
 }
-/**
-* Helper function to generate uniqueID
-*/
-var uniqueID = (function() {
-   var id = 0; // This is the private persistent value
-   // The outer function returns a nested function that has access
-   // to the persistent value.  It is this nested function we're storing
-   // in the variable uniqueID above.
-   return function() { return id++; };  // Return and increment
-})(); // Invoke the outer function after defining it.
+
 /**
 * extend(values)
 * # Function to extend array by new array of values
@@ -1211,6 +1205,28 @@ Array.prototype.extend = function(values){
 Array.prototype.last = function() {
         return this[this.length - 1];
 }
+/**
+* Array of color for series
+*/
+var COLOR_ARRAY = [
+'DeepSkyBlue',
+'slateGray',
+'limeGreen',
+'#999',
+'CornflowerBlue',
+'mediumAquamarine',
+'darkKhaki',
+'MidnightBlue',
+'gold',
+'indianRed',
+'peru',
+'firebrick',
+'orange',
+'mediumOrchid',
+'PeachPuff4',
+'brown1',
+'plum1',
+'grey38'];
 /**
 * Array of available charts
 */
