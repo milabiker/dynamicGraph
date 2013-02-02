@@ -5,8 +5,9 @@ $(function(){
 		title : {
 			text: "Dynamic graph"
 		},  
-		timePeriod: 1000*60, 
+		timePeriod: 1000*20, 
 		timeLabelsTick : 1000*20, 
+		callbackTime: 100,
 		dataSeries : {
 			seriesMarkers: [false]
 		},
@@ -29,13 +30,13 @@ $(function(){
 	
 	svgline.draw();
 	
-	// var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200);
-	// $("button.clear1").click(function(){
-	// 	svg2.clearUpdate();
-	// });$("button.activate1").click(function(){
-	// 	svg2.activateUpdate();
-	// });
-	// svg2.draw();
+	var svg2 = $('div#svg').SVGDynamicGraph_1('LineGraph',400,200);
+	$("button.clear1").click(function(){
+		svg2.clearUpdate();
+	});$("button.activate1").click(function(){
+		svg2.activateUpdate();
+	});
+	svg2.draw();
 //	svgline.setCallback(function(){});
 
 });

@@ -111,6 +111,7 @@ function GraphManager(element, charttype, width, height, settings){
 		timeLabelsTick: 1000*10, // e.g. every 1 min on graph
 		timePeriod : 1000*50, // (in milis)
 		ControlPanelEnabled:true,
+		callbackTime : 1000,
 		
 		xAxis : {
 			enabled : true,
@@ -171,7 +172,7 @@ function GraphManager(element, charttype, width, height, settings){
 			
 		},
 		dataSeries : {
-			seriesMarkers : ['circle'], /* circle, square */ //array length should equal number of series to set all markers
+			seriesMarkers : [false], /* circle, square */ //array length should equal number of series to set all markers
 			markerSize : 5, 
 			seriesPathSettings : {strokeWidth : 2, fill:'none'}
 		},
@@ -316,7 +317,7 @@ $.extend(GraphManager.prototype,{
 	activateUpdate : function activateUpdate(){
 		this.isUpdateActive = true;
 		
-		this._timerID = setTimeout(this.callback, 2000, this);
+		this._timerID = setTimeout(this.callback, this.settings.callbackTime+1000, this);
 		console.log("TIMER id " + this._timerID);
 	},
 	callback :function callback(inst){
@@ -330,7 +331,7 @@ $.extend(GraphManager.prototype,{
 		}
 		inst.charttype.refreshGraph(inst._graphArea,numberOfNewValues);
 		// LOG(arguments,'passed to callback',"_currentTimelineDate = " + inst._currentTimelineDate);
-		inst._timerID = setTimeout(inst.callback,100,inst);
+		inst._timerID = setTimeout(inst.callback,inst.settings.callbackTime,inst);
 		// LOG(arguments,'',"callback !!!");
 		if(!inst.isUpdateActive){
 			console.log("INST timer id " + inst._timerID);
@@ -608,13 +609,14 @@ $.extend(GraphArea.prototype,{
 			LOG(arguments,'',"series[" + i + "] = " + series[i].getName());
 			// LOG(arguments,'',"upscale of " + key);
 			var element = series[i].svgElement();
+
 			var measurements = series[i].getMeasurmentsToDraw(-1);
 			console.log("##################################################################################");
 			console.log("measurements.length = " + measurements.length);
-			for(var i=0,len = measurements.length; i < len; i++){
+			for(var j=0,l = measurements.length; j < l; j++){
 				// console.log("------------------------------------------------------------------------------");
 				// LOG(arguments,'old y value', element.pathNode.pathSegList.getItem(i).y);
-				element.pathNode.pathSegList.getItem(i).y = this.graphManager.calculateYpoint(svgSize,maxValue,measurements[i].value,this.graphPadding);
+				element.pathNode.pathSegList.getItem(j).y = this.graphManager.calculateYpoint(svgSize,maxValue,measurements[j].value,this.graphPadding);
 				// LOG(arguments,'new y value', element.pathNode.pathSegList.getItem(i).y);
 			}
 		}
@@ -841,6 +843,7 @@ function TimeAxis(graphManager){
 }
 // ## New approach to get immutable vars (closures!)
 function DataSeries(measurements, name){
+	var _id = uniqueID();
 	var _measurements = measurements; // e.g. [ { value : 0.92, timestamp : 12435436 }];
 	var _lastMeasurementXpoint = 0;
 	var _maxValue = Math.max.apply(Math,_getValues(measurements));
@@ -920,6 +923,9 @@ function DataSeries(measurements, name){
 		getMaxValue: function getMaxValue(){
 			return _maxValue;
 		},
+		getSeriesID : function getSeriesID () {
+			return _id;
+		},
 		/**
 		*
 		*/
@@ -991,7 +997,7 @@ $.extend(LineGraph.prototype, {
 					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize.height,maxValue, measurementsToDraw[0].value,graphArea.graphPadding);
 					var tmpPath = graphArea.svgManager.createPath();
 					var element = { 'path' : tmpPath,
-									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y), /*{fill: 'none', stroke: 'gray', strokeWidth: 1,*/ 
+									'pathNode' : graphArea.svgManager.path(graphArea._graphAreaGroup, tmpPath.move(x,y),
 									$.extend({}, { stroke : series.getSeriesColor(), markerMid: this.graphManager.settings.dataSeries.seriesMarkers[0] ? 'url(#'+this.graphManager.settings.dataSeries.seriesMarkers[0]+ ')' : 'none' } , this.graphManager.settings.dataSeries.seriesPathSettings)) };
 					series.svgElement(element);
 					isFirstValueOfSeries = true;
@@ -1181,6 +1187,16 @@ function get_random_color(background) {
   }while(color == background);
   return color;
 }
+/**
+* Helper function to generate uniqueID
+*/
+var uniqueID = (function() {
+   var id = 0; // This is the private persistent value
+   // The outer function returns a nested function that has access
+   // to the persistent value.  It is this nested function we're storing
+   // in the variable uniqueID above.
+   return function() { return id++; };  // Return and increment
+})(); // Invoke the outer function after defining it.
 /**
 * extend(values)
 * # Function to extend array by new array of values

@@ -1,9 +1,9 @@
 toggle = true;
 var database = {};
-var generatorTime = 500;
+var generatorTime = 100;
 var counterForSin = 1;
 var timer = setTimeout(generator,0,{seriesName : 'seria_1', dataType : "sinus"});
-var timer = setTimeout(generator,1000,{seriesName : 'seria_2', dataType : "random"});
+var timer = setTimeout(generator,0,{seriesName : 'seria_2', dataType : "random"});
 
 function generator(obj){
 	//console.log("generator on " + seriesName);
