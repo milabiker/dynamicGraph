@@ -2,8 +2,8 @@ toggle = true;
 var database = {};
 var generatorTime = 100;
 var counterForSin = 1;
-var timer = setTimeout(generator,0,{seriesName : 'seria_1', dataType : "sinus"});
-var timer = setTimeout(generator,0,{seriesName : 'seria_2', dataType : "random"});
+var timer = setTimeout(generator,1000,{seriesName : 'seria_1', dataType : "sinus"});
+var timer = setTimeout(generator,1000,{seriesName : 'seria_2', dataType : "random"});
 
 function generator(obj){
 	//console.log("generator on " + seriesName);
@@ -12,7 +12,7 @@ function generator(obj){
 		database[obj.seriesName] = [];
 	}
 	database[obj.seriesName].push(measure);
-	timer = setTimeout(generator,generatorTime,{ seriesName : obj.seriesName, dataType : obj.dataType });
+		timer = setTimeout(generator,generatorTime,{ seriesName : obj.seriesName, dataType : obj.dataType });
 }
 /**
 * returns one measure
@@ -47,7 +47,6 @@ function generateMeasure(dataType){
 	counterForSin++;
 
 	tmp.timestamp = new Date().getTime();
-	//console.log("Measure : value =" + tmp.value + " timestamp = " + new Date(tmp.timestamp).getHours() + ":" + new Date(tmp.timestamp).getMinutes() + ":" + new Date(tmp.timestamp).getSeconds());
 	return tmp;
 
 }
@@ -57,14 +56,12 @@ function generateMeasure(dataType){
 */
 function getData(dateOfLastMesaurement){
 	var time = new Date(dateOfLastMesaurement);
-	// console.log("getData from " + time.getHours() + " : " + time.getMinutes() + " : " + time.getMinutes());
 	var toReturn = {};
 	for(key in database){
 		//console.log("database length = " + database[key].length);
 		
 		var i = database[key].length-1;
 		while(database[key][i].timestamp > dateOfLastMesaurement ){
-			// console.log("i = " + i);
 			i--;
 			if(i <= 0){
 				break;
@@ -83,24 +80,4 @@ function getData(dateOfLastMesaurement){
 
 	}
 	return toReturn;
-}
-function log10(val) {
-  return Math.log(val) / Math.LN10;
-}
-function calculateYaxisStep(range, targetSteps){
-	var tempStep = range/targetSteps;
-
-	mag = Math.floor(log10(tempStep));
-	magPow = Math.pow(10, mag);
-
-	magMSD = tempStep/magPow + 0.5;
-
-	if(magMSD > 5.0){
-		magMSD = 10.0;
-	}else if(magMSD > 2.0){
-		magMSD = 5.0;
-	}else if (magMSD > 1.0){
-		magMSD = 2.0;
-	}
-	return magMSD*magPow;
 }

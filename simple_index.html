@@ -3,11 +3,9 @@
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 	<script src="jquery-1.8.2.min.js"></script>
 	<script type="text/javascript" src="jquery.svg.package-1.4.5/jquery.svg.js"></script>
-	<script type="text/javascript" src="jquery.svg.package-1.4.5/jquery.svggraph.js"></script>
-	<script type="text/javascript" src="jquery.svg.package-1.4.5/jquery.svganim.js"></script>
 	<script type="text/javascript" src="TestData.js"></script>
-	<script type="text/javascript" src="Lib_1.js"></script>
-	<script type="text/javascript" src="Library.js"></script>
+	<script type="text/javascript" src="dynamicGraph.js"></script>
+	<script type="text/javascript" src="libraryUse.js"></script>
 	<style type="text/css">
 		@import "jquery.svg.package-1.4.5/jquery.svg.css";
 		#svgbasics { width: 400px; height: 300px; border: 1px solid #484; }
@@ -18,29 +16,29 @@
 		svg{
 			/*border: 1px solid blue;*/
 			font-family: 'Arial';
-			/*background: 'DeepSkyBlue';*/
+			/*fill: blue;*/
 		}
-		g{
-			/*stroke: black;*/
-			}
-		path{
-
+		rect.graphBackground{
+			/*fill : DeepSkyBlue;*/
 		}
 	</style>
 </head>
 <body>
+	<div id="svgLineGraph" style="display:inline">
+	
+	</div>
+
+	<div id="svg" style="display:inline">
+	</div>
+	<div>
 	<button class="clear"> clear update </button>
 	<button class="activate"> activate update </button>
-	<div id="svgLineGraph">
+	<button class="clear1"> clear update </button>
+	<button class="activate1"> activate update </button>
 	</div>
 	<div id="svgLineGraph2">
 	</div>	
 	<div id="svgLineGraph3">
-	</div>
-	<button class="clear1"> clear update </button>
-	<button class="activate1"> activate update </button>
-	<div id="svg">
-	
 	</div>
 </body>
 </html>
