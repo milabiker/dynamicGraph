@@ -11,9 +11,33 @@
 //http://jsfiddle.net/v3jvK/
 //
 (function($){
+	/**
+	* Manager which allows  to add new graph types with own implementation
+	*/
+	$.ChartsManager = new ChartsManager();
+	function ChartsManager(){
+		var _CHARTTYPES = [];
+		return {
+			addChartType : function addChartType (name, chart) {
+				_CHARTTYPES[name] = chart;
+			},
+			getCharts : function getCharts () {
+				return _CHARTTYPES;
+			},
+			getChartType : function getChartType (name) {
+				if(_CHARTTYPES[name]){
+					return $.extend(true,{},_CHARTTYPES[name]);
+				}
+				return false;
+			}
+		}
+	};
+	/**
+	*
+	*/
 	$.fn.SVGDynamicGraph_1 = function(chartId, width, height, settings){
 
-		var charttype = jQuery.extend(true, {}, CHARTTYPES[chartId]);
+		var charttype = $.ChartsManager.getChartType(chartId);
 		if(charttype){
 			console.log("LineGraph...");
 			this.graphManager = new GraphManager(this, charttype, width,height, settings);
@@ -52,8 +76,6 @@ function GraphManager(element, charttype, width, height, settings){
 			// ticks : 5,
 			
 		},
-		// timeAxis : {},
-
 		chartOptions : {
 			grid : true,//false
 			gridSettings : {
@@ -92,7 +114,7 @@ function GraphManager(element, charttype, width, height, settings){
 			
 		},
 		dataSeries : {
-			seriesMarkers : [false, 'circle'], /* circle, square */ //array length should equal number of series to set all markers
+			seriesMarkers : [false, 'circle'], /* circle, square, triangle,cross */ //array length should equal number of series to set all markers
 			markerSize : 5, 
 			seriesPathSettings : {strokeWidth : 2, fill:'none'}
 		},
@@ -104,7 +126,6 @@ function GraphManager(element, charttype, width, height, settings){
 				stroke : 'none',
 				fontSize : 15,
 				paddingTop : 5,
-					// verticalPos : this.svgManager._width()/2,
 				textAnchor : 'middle'}
 		},
 		draw_axis: true,
@@ -149,7 +170,6 @@ function GraphManager(element, charttype, width, height, settings){
 		'title': { x : { fromX: 0.2, toX: 1.0}, y : { fromY: 0.0, toY: 0.1 } },
 		'graph': { x : { fromX: 0.2, toX: 1.0}, y : { fromY: 0.1, toY: 1.0 } }
 		};
-	// defining defs , it must be at the begining of svg elements
 	if(this.isTitle){
 		this._titleArea = new TitleArea(this);
 	}
@@ -231,7 +251,7 @@ $.extend(GraphManager.prototype,{
 					series.update(dataSeries[key]);
 				}else{
 					//LOG(arguments,'',"dataSeries[key] = " + dataSeries[key] + "name: " + key + "fisrt value = " + dataSeries[key][0].value);
-					this._series.push(new DataSeries(dataSeries[key],key,this.uniqueID()));
+					this._series.push(new DataSeries(dataSeries[key],key,this._uniqueID()));
 				}
 				var tmp = {};
 				tmp[key] = dataSeries[key].length;
@@ -241,8 +261,11 @@ $.extend(GraphManager.prototype,{
 		return numberOfNewValuesToDrawInSeries;
 	},
 	activateUpdate : function activateUpdate(){
-		this._timerID = setTimeout(this.callback, this.settings.callbackTime, this);
-		console.log("TIMER id " + this._timerID);
+		if(!this._timerID){
+			this._timerID = setTimeout(this.callback, this.settings.callbackTime, this);
+			console.log("TIMER id " + this._timerID);
+		}
+		return this;
 	},
 	callback :function callback(inst){
 
@@ -259,7 +282,9 @@ $.extend(GraphManager.prototype,{
 	},
 	clearUpdate : function clearUpdate(){
 		clearTimeout(this._timerID);
+		this._timerID = false;
 		LOG(arguments,'', "interval deactivated");
+		return this;
 	},
 	setCallback : function setCallback(obj){
 		this.callback = obj;
@@ -389,9 +414,9 @@ $.extend(GraphManager.prototype,{
 		return COLOR_ARRAY[id];
 	},
 	/**
-	* Helper function to generate uniqueID
+	* Helper function to generate _uniqueID
 	*/
-	uniqueID : function uniqueID () {
+	_uniqueID : function _uniqueID () {
 		return this.uniqueSeriesID++;
 	},
 });
@@ -1100,6 +1125,7 @@ var COLOR_ARRAY = [
 */
 var CHARTTYPES = [];
 CHARTTYPES['LineGraph'] = new LineGraph();
+$.ChartsManager.addChartType('LineGraph', new LineGraph());
 })(jQuery);
 
 

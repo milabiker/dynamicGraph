@@ -1,5 +1,11 @@
 $(function(){
 	//--------------------------------------------------------------------------
+	// function Cos(){
+	// 	alert('cos');
+	// };
+
+	// $.ChartsManager.addChartType('Graph2', new Cos());
+	// console.log($.ChartsManager.getCharts());
 	var svgline = $('div#svgLineGraph').SVGDynamicGraph_1('LineGraph',600,300, 
 						{
 							title : {
