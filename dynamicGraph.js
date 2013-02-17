@@ -1,15 +1,4 @@
-//###################
 
-// callback schema
-    // {
-    // 	getnewdata()
-    // 	chartType.drawSeries()
-    // 	charttype.moveArea () ?// wonder whether it will be needed in all graph types
-    // }
-
-//###################
-//http://jsfiddle.net/v3jvK/
-//
 (function($){
 	/**
 	* Manager which allows  to add new graph types with own implementation
@@ -35,16 +24,15 @@
 	/**
 	*
 	*/
-	$.fn.SVGDynamicGraph_1 = function(chartId, width, height, settings){
+	$.fn.SVGDynamicGraph = function(chartId, width, height, settings){
 
 		var charttype = $.ChartsManager.getChartType(chartId);
 		if(charttype){
-			console.log("LineGraph...");
 			this.graphManager = new GraphManager(this, charttype, width,height, settings);
 			charttype.initialize(this.graphManager);
 			return this.graphManager;
 		}else{
-			console.error('SVGDynamincGraph: Wrong chart type');
+			console.error('SVGDynamincGraph: Wrong chart type. There is no type : ' + chartId);
 		}
 	};
 //===============================================================================================================
@@ -53,8 +41,8 @@
 function GraphManager(element, charttype, width, height, settings){
 	this.defaultSettings = {
 		name : $(element).attr('id'),
-		timeLabelsTick: 1000*10, // e.g. every 1 min on graph
-		timePeriod : 1000*50, // (in milis)
+		timeLabelsTick: 1000*2, // e.g. every 1 min on graph
+		timePeriod : 1000*5, // (in milis)
 		ControlPanelEnabled: false,
 		callbackTime : 1000,
 		
@@ -69,6 +57,7 @@ function GraphManager(element, charttype, width, height, settings){
 				fill:'MidnightBlue',
 				transform : 'rotate(0,0,0)'},
 			lineSettings : {
+				strokeOpacity: 100,
 				strokeWidth: 0.5, 
 				class_: 'axis',
 				stroke:'MidnightBlue', 
@@ -86,10 +75,14 @@ function GraphManager(element, charttype, width, height, settings){
 				strokeWidth:1 },
 			horizontal_grid: true,//false
 			vertical_grid: false,//false
-			background : {
+			graphAreaBackground : {
 				class_ : 'graphBackground',
 				fill : 'none',
-				zIndex : -1 }
+				zIndex : -1 },
+			background : {
+				fill: 'none',
+				class_: 'background'
+			}
 
 		},
 		yAxis : {
@@ -105,6 +98,7 @@ function GraphManager(element, charttype, width, height, settings){
 				alignmentBaseline: 'middle', 
 				textAnchor : 'end', 
 				stroke:'none', 
+				strokeOpacity: 1,
 				fontSize: 10,
 				fill : 'MidnightBlue'},
 			lineSettings : {
@@ -128,17 +122,20 @@ function GraphManager(element, charttype, width, height, settings){
 				paddingTop : 5,
 				textAnchor : 'middle'}
 		},
-		draw_axis: true,
+		draw_axis: false,
 	}
 	//===================
 	// attaching svg 
+	LOG(arguments,'',"width = " + width + "| height = " + height);
 	$(element).svg({settings : { width: width, height : height}});
 	mysvg = $(element).svg('get');
 	//===================
-	mysvg._container = mysvg._svg;
+	// mysvg._container = mysvg._svg;
 	this.svgManager = mysvg;
 	this.charttype = charttype;
 	this.settings = $.extend(true,{}, this.defaultSettings, settings);
+
+	this.chartBackground = this.svgManager.rect(0,0,width,height,this.settings.chartOptions.background); 
 	
 	this.isLegend = this.settings.legend || false;
 	this.isTitle = this.settings.title.enabled || false;
@@ -165,11 +162,6 @@ function GraphManager(element, charttype, width, height, settings){
 		yAxisArea : {width : this.settings.yAxis.title ? 60 : 40, height : 0},
 		xAxisArea : {width : this.svgManager._width() - 50, height : 35}
 		};
-	this.regions = {
-		'legend':{ x : { fromX: 0.0, toX: 0.2}, y : { fromY: 0.0, toY: 1.0 } },
-		'title': { x : { fromX: 0.2, toX: 1.0}, y : { fromY: 0.0, toY: 0.1 } },
-		'graph': { x : { fromX: 0.2, toX: 1.0}, y : { fromY: 0.1, toY: 1.0 } }
-		};
 	if(this.isTitle){
 		this._titleArea = new TitleArea(this);
 	}
@@ -180,16 +172,13 @@ function GraphManager(element, charttype, width, height, settings){
 	
 }
 $.extend(GraphManager.prototype,{
-	_getRegionWidthRatio : function _getRegionWidthRatio(regionName){
-		return this.regions[regionName].x.toX - this.regions[regionName].x.fromX;
-	},
-	_getRegionHeightRatio : function _getRegionHeightRatio(regionName){
-		return this.regions[regionName].y.toY - this.regions[regionName].y.fromY;
-	},
+	
 	draw: function draw(){
 		if(this.isTitle){
 			this._titleArea._draw();
 		}
+
+		/* To develop in later versions */
 		if(this.isLegend){
 			this._legendArea._draw();
 		}
@@ -198,9 +187,9 @@ $.extend(GraphManager.prototype,{
 
 		this.activateUpdate();//this.callback();
 		this.charttype.draw(this._graphArea);
-		if(this.settings.chartOptions.grid){
-			this._defineDefs(this._graphArea);
-		}
+		this._defineDefs(this._graphArea);
+
+		/* To develop in later versions */
 		if(this.settings.ControlPanelEnabled){
 			this._controlPanel = new ControlPanel(this);
 		}
@@ -357,15 +346,7 @@ $.extend(GraphManager.prototype,{
 		}
 	},
 	_setDateTimeRange : function _setDateTimeRange(){
-		// LOG(arguments,'new way', "timeRange = " + new Date(this._currentTimelineDate.getTime()-this.settings.timePeriod));
-		//LOG(arguments,'new way', "timeRange = " + new Date(this.settings.timePeriod));
-
 		this._xAxisDateTimeRange = new Date(this.settings.timePeriod).getTime();
-//		var current = (new Date()).getTime();
-//		var begining = (new Date(current - this.settings.timePeriod)).getTime();
-//		this._xAxisDateTimeRange = new Date(Math.abs(current - begining));
-//		LOG(arguments,'odl way', "_xAxisDateTimeRange = " + this._xAxisDateTimeRange);
-
 	},
 	calculateScale : function calculateScale(size,padding){
 		var range = this.calculateRange();
@@ -406,7 +387,6 @@ $.extend(GraphManager.prototype,{
 		var obj = { range : realRange,
 				minValue : realMinValue,
 				maxValue : realMaxValue};
-		// LOG(arguments,'', " obj = " + JSON.stringify(obj));
 		return obj;
 	},
 	getColorForSeries: function getColorForSeries(id){
@@ -426,14 +406,14 @@ $.extend(GraphManager.prototype,{
 function GraphArea(graphManager){
 	this.svgManager = graphManager.svgManager;
 	this.graphManager = graphManager;
-	this.padding = 0.1;
-	this.paddingLeft=0.1;
-	this.paddingRight = 0.02;
+	// this.padding = 0.1;
+	// this.paddingLeft=0.1;
+	// this.paddingRight = 0.02;
 	this.paddingRightPx = 25;
-	this.paddingBottom = 0.15;
-	this.paddingTop = 0.01;
+	// this.paddingBottom = 0.15;
+	// this.paddingTop = 0.01;
 	this.graphPadding = 0.1;
-	this.clip;
+	
 };
 $.extend(GraphArea.prototype,{
 	_draw: function draw(){
@@ -448,6 +428,7 @@ $.extend(GraphArea.prototype,{
 		this._group = this.svgManager.group(null, {transform : translate, class_ : this.graphManager.settings.name+'graphRegion'});
 
 		var tmpChartSvgHeight = this.svgManager._height() - (titleEnabled ? titleHeight : 0) - (xAxisEnabled ? xAxisHeight : 0); 
+		LOG(arguments, '',"width = " + this.svgManager._width() + " | height = " + this.svgManager._height());
 		
 		this._chartSVGSize = {width : yAxisEnabled ? this.svgManager._width() - yAxisWidth - this.paddingRightPx /*as padding*/: this.svgManager._width() - 50/*as padding*/,
 								height : tmpChartSvgHeight};
@@ -456,7 +437,7 @@ $.extend(GraphArea.prototype,{
 									0/*as padding */,
 									this._chartSVGSize.width,
 									this._chartSVGSize.height );
-		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize.width,this._chartSVGSize.height, this.graphManager.settings.chartOptions.background);
+		var background = this.svgManager.rect(this._chartSVG,0,0,this._chartSVGSize.width,this._chartSVGSize.height, this.graphManager.settings.chartOptions.graphAreaBackground);
 		this._gridlinesGroup = this.svgManager.group(this._chartSVG, {class_ : "gridLines"});
 		this._graphAreaGroup = this.svgManager.group(this._chartSVG, {class_: this.graphManager.settings.name+'graphArea'});
 		
@@ -516,17 +497,13 @@ $.extend(GraphArea.prototype,{
 			
 		// }
 	},
-	upscale : function upscale(series,svgSize,maxValue){
+	_upscale : function _upscale(series,svgSize,maxValue){
 		for(var i=0, len=series.length; i < len; i++){
-			// LOG(arguments,'',"upscale of " + key);
 			var element = series[i].svgElement();
 
 			var measurements = series[i].getMeasurmentsToDraw(-1);
 			for(var j=0,l = measurements.length; j < l; j++){
-				// console.log("------------------------------------------------------------------------------");
-				// LOG(arguments,'old y value', element.pathNode.pathSegList.getItem(i).y);
 				element.pathNode.pathSegList.getItem(j).y = this.graphManager.calculateYpoint(svgSize,maxValue,measurements[j].value,this.graphPadding);
-				// LOG(arguments,'new y value', element.pathNode.pathSegList.getItem(i).y);
 			}
 		}
 
@@ -542,10 +519,7 @@ function TitleArea(graphManager){
 	this.settings = graphManager.settings.title.textSettings;
 	this.verticalPos = this.svgManager._width()/2;
 	this.paddingTop = 5;
-				/* { fontSize : 17,
-					paddingTop : 5,
-					verticalPos : this.svgManager._width()/2,
-					textAnchor : 'middle'}*/
+				
 	};
 $.extend(TitleArea.prototype,{
 	_draw : function _draw(){
@@ -574,11 +548,8 @@ $.extend(LegendArea.prototype,{
 		// this._group = this.svgManager.group(null,{ transform : 'translate( 0,' + (this.svgManager._height() - 25) + ')', class_ : 'legendArea', fill : 'blue'});
 		// this.svgManager.text(this._group, 10, 10, "Legend ", { stroke : 'none', fontSize : 15});
 		// this.svgManager.text(this._group,10,20, this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes(), {fontSize:10, stroke:'none', fill:'black', class_:'time'});
-	},
-	// temporary
-	refreshTime : function refreshTime(){	
-		// $('.time',this.svgManager.root()).text(this.graphManager._getCurrentTimelineDate().getHours() +" : " +  this.graphManager._getCurrentTimelineDate().getMinutes() + " : " + this.graphManager._getCurrentTimelineDate().getSeconds());
 	}
+	
 });
 
 //=========================================================================================================================
@@ -600,37 +571,9 @@ function Axis(graphManager, ticks){
 	this._label_unit = graphManager.settings.yAxis.label_unit;
 }
 $.extend(Axis.prototype,{
-	// title : function title(title, settings){
-	// 	if(arguments.length == 0){
-	// 		return this._title;
-	// 	}
-	// 	this._title = title;
-	// 	if(typeof settings == object){
-	// 		this._tittleSettings = $.extend(this._tittleSettings, settings);
-	// 	}
-	// },
-	// values : function values(min, max){
-	// 	if(arguments.length == 0){
-	// 		return {min : this._minValue, max: this._maxValue};
-	// 	}
-	// 	this._maxValue = max;
-	// 	this._minValue = min;
-	// },
-	// lables : function labels(labels, settings){
-	// 	if(arguments.length == 0){
-	// 		return this._labels
-	// 	}
-	// 	this._labels = labels;
-	// 	this._labelsSettings = $.extend(this._labelsSettings , settings);
-	// },
-	// line: function line(settings){
-	// 	if(typeof settings == object){
-	// 		this._lineSettings = $.extend(this._lineSettings, settings);
-	// 	}
-	// },
+	
 	calculateStep : function calculateStep(range, targetSteps){
 		var tempStep = range/targetSteps;
-
 		mag = Math.floor(log10(tempStep));
 		magPow = Math.pow(10, mag);
 
@@ -648,18 +591,19 @@ $.extend(Axis.prototype,{
 		}
 		return magMSD*magPow;
 	},
-	// generateLabelsArray : function generateLabelsArray(tickStep, minValue, maxValue, ticks){
-		// var tmpArray = [];
-		// var minBound = tickStep * Math.floor(minValue/tickStep);
-		// var maxBound = tickStep * Math.round(1+maxValue/tickStep);
-		// var labelValue = minBound; 
-		// while(tmpArray.length <= ticks){
-		// 	tmpArray.push(labelValue.toString());
-		// 	labelValue += tickStep;
-		// }
-		// // tmpArray.push(maxBound);
-		// LOG(arguments,'','ticks = ' + ticks + ' labels = ' + tmpArray + "  minValue = " + minValue + " maxValue = " + maxValue);
-		// return tmpArray;
+	// algotithm for "nice" values, but causes bug with displaying values
+	// generateLabelsArray : function generateLabelsArray(tickStep, rangeObj){
+	// 	var tmpArray = [];
+	// 	var minBound = tickStep * Math.floor(rangeObj.minValue/tickStep);
+	// 	var maxBound = tickStep * Math.round(1+rangeObj.maxValue/tickStep);
+	// 	var labelValue = minBound; 
+	// 	while(tmpArray.length <= this._ticks){
+	// 		tmpArray.push(labelValue.toString());
+	// 		labelValue += tickStep;
+	// 	}
+	// 	// tmpArray.push(maxBound);
+	// 	LOG(arguments,'','ticks = ' + this._ticks + ' labels = ' + tmpArray + "  minValue = " + rangeObj.minValue + " maxValue = " + rangeObj.maxValue);
+	// 	return tmpArray;
 
 	generateLabelsArray : function generateLabelsArray(rangeObj){
 		var tmpArray = [];
@@ -667,19 +611,19 @@ $.extend(Axis.prototype,{
 		// tmpArray.push(rangeObj.minValue.toString());
 		for(var i=0; i <= this._ticks; i++){
 			var value = (rangeObj.minValue+(i*tickValue)).toFixed(2);
-			// LOG(arguments,'',"label " + i + " value = " + value);
 			tmpArray.push(value.toString());
 		}
-		// LOG(arguments,''," tmpArray.length = " + tmpArray.length);
 		return tmpArray;
 	},
 	refreshLabels : function refreshLabels(graphArea,minValue,maxValue){
-		// var range = maxValue - minValue;
-		// var step = this.calculateStep(range,this._ticks);
-		// var labels = this.generateLabelsArray(step,minValue,maxValue,this._ticks);
+
+		// var rangeObj = this.graphManager.calculateRangeForYAxis(graphArea);
+		// var step = this.calculateStep(rangeObj.range,this._ticks);
+		// var labels = this.generateLabelsArray(step,rangeObj);
 		// for(var len = this._labelsNodes.length; len > 0; len--){
 		// 	$(this._labelsNodes[len],this.graphManager.svgManager.root()).text(labels[len]);
 		// }
+
 		var rangeObj = this.graphManager.calculateRangeForYAxis(graphArea);
 		var labels = this.generateLabelsArray(rangeObj);
 		// LOG(arguments,'',"_labelsNodes.length = " + this._labelsNodes.length + " | labels.length = " + labels.length + " | labels = " + labels);
@@ -710,7 +654,6 @@ function TimeAxis(graphManager){
 			var isFirstLabel = true;
 			while(numberOfLabels >= 0){
 				var lineOffset = numberOfLabels*offset;
-				// LOG(arguments,"","draw divisor | lineOffset = " + lineOffset);
 				graphManager.svgManager.line(_labelsGroup, x1 + lineOffset, y1, x1 + lineOffset, y1+_lineSettings.scaleSize, _lineSettings/*{strokeWidth: 0.5}*/);
 				var labelTime = (graphManager._getCurrentTimelineDate().getTime() - graphManager.settings.timePeriod) + numberOfLabels*graphManager.settings.timeLabelsTick;
 				var labelDate = new Date(labelTime);
@@ -723,11 +666,8 @@ function TimeAxis(graphManager){
 				numberOfLabels--;
 			}
 		},
-		redrawLabels : function redrawLabels(graphArea){
-//			var numberOfLabels = Math.ceil(graphManager._xAxisDateTimeRange/graphManager.settings.timeLabelsTick);
+		redrawLabels : function redrawLabels(){
 			var len = _labelsNodes.length;
-			var offset = graphArea._chartSVGSize.width/len; //len = numberOfLabels
-			// LOG(arguments,'',graphManager._getCurrentTimelineDate().toLocaleTimeString());
 			for(var i = len; i >= 0; i--){
 				var labelTime = graphManager._getCurrentTimelineDate().getTime() -  i*graphManager.settings.timeLabelsTick;
 				var labelDate = new Date(labelTime);
@@ -748,9 +688,7 @@ function DataSeries(measurements, name, id){
 	var _dateOfLastUpdate = new Date(measurements.last().timestamp);
 	var _element;
 	var _seriesColor = get_random_color();
-	// LOG(arguments,'',"_minValue = " + _minValue + " | _maxValue = " + _maxValue);
-	//var _dateOfLastDrawedMeasure; // TODO to consider
-
+	
 	// private functions ! 
 	function _getValues(measurements){
 			var values = [];
@@ -767,7 +705,6 @@ function DataSeries(measurements, name, id){
 	function _updateMaxMinValueFromMeasurements(newMeasurements){
 		var valuesArray = _getValues(newMeasurements);
 		var newMaxValue = Math.max.apply(Math,valuesArray);
-		// LOG(arguments,'max values comparsion '," old == new || " + _maxValue + " == " + newMaxValue);
 		if(_maxValue < newMaxValue){
 				_maxValue = newMaxValue;
 		}  
@@ -775,7 +712,6 @@ function DataSeries(measurements, name, id){
 		if(_minValue > newMinValue){
 			_minValue = newMinValue;
 		}
-		// LOG(arguments,'',"_minValue = " + _minValue);
 	};
 	
 	/**
@@ -787,8 +723,6 @@ function DataSeries(measurements, name, id){
 		*/
 		update : function update(measurements){
 			_measurements.extend(measurements);
-			// LOG(arguments,"","measurements.length = " + measurements.length);
-			// LOG(arguments,'',"last timestamp " + (new Date(measurements.last().timestamp)));
 			_dateOfLastUpdate = new Date(measurements.last().timestamp);
 			_updateMaxMinValueFromMeasurements(measurements);
 
@@ -879,7 +813,6 @@ $.extend(LineGraph.prototype, {
 	// instead of using this._series use only new values to attach it to series line
 	drawSeries : function drawSeries(graphArea, yScale, numberOfNewValuesToDrawInSeries){
 		var seriesLength = this.graphManager._series.length;
-		// LOG(arguments,'',"series length= " + seriesLength);
 		for (key in numberOfNewValuesToDrawInSeries){
 			var series = this.graphManager._getSeriesByName(key);
 			if(series != undefined){
@@ -909,9 +842,7 @@ $.extend(LineGraph.prototype, {
 					var timedifference = measurementsToDraw[i].timestamp - this.graphManager._currentTimelineDate.getTime();
 					x = series.getLastMeasurmentXPoint() + timedifference*graphArea._chartSVGSize.width/this.graphManager._xAxisDateTimeRange;
 					var y = this.graphManager.calculateYpoint(graphArea._chartSVGSize.height,maxValue,measurementsToDraw[i].value,graphArea.graphPadding);
-					// LOG(arguments,"","y = " + y);
 					element.path.line(x,y).path();
-					// this.graphManager.svgManager.circle(graphArea._graphAreaGroup, x,y,2);
 				}
 
 				series.setLastMeasurmentXpoint(x);
@@ -947,9 +878,7 @@ $.extend(LineGraph.prototype, {
 	addSeries: function addSeries(){
 
 	},
-	// Area should be moved xScale * numberOfNewValuesToDraw px on each response with new values
-	
-	//TODO not working cause of translate should add new value of offset to current !
+	// Area should be moved xScale * numberOfNewValuesToDraw px on each response with new values	
 	moveArea:function moveArea(offset1){
 		var offset = offset1*(-1);
 		var objId = "."+this.graphManager.settings.name+'graphArea';
@@ -968,25 +897,20 @@ $.extend(LineGraph.prototype, {
 		this.drawSeries(graphArea,this.graphManager.yScale,numberOfNewValuesToDraw);// it was on the bottom
 
 		if(shouldUpscale){
-			graphArea.upscale(this.graphManager._series, graphArea._chartSVGSize.height, this.graphManager._getMaxValueFromSeries());
+			graphArea._upscale(this.graphManager._series, graphArea._chartSVGSize.height, this.graphManager._getMaxValueFromSeries());
+			if(this.graphManager.settings.yAxis.enabled){
+				this.graphManager._yAxis.refreshLabels(graphArea,this.graphManager._getMinValueFromSeries(), this.graphManager._getMaxValueFromSeries());
+			}				
 		}
-		this.graphManager._yAxis.refreshLabels(graphArea,this.graphManager._getMinValueFromSeries(), this.graphManager._getMaxValueFromSeries());
 		
 		var previousEndTimeLineDate = this.graphManager._getCurrentTimelineDate(); 
 		this.graphManager._currentTimelineDate = this.graphManager._getDateOfLastUpdateFromAllSeries();
 
-		//TODO temporary solution with xTranslate !!!!
 		if(this.xTranslate == undefined){
 			this.xTranslate = 0;
 		}
 		this.xTranslate +=  ((this.graphManager._currentTimelineDate.getTime() - previousEndTimeLineDate.getTime())*graphArea._chartSVGSize.width/this.graphManager._xAxisDateTimeRange); 
-		// LOG(arguments,'',"xTranslate " + xTranslate);
 
-		//tempoarary
-		//refreshing time on legend area
-		// if(this.graphManager._legendArea){
-		// 	this.graphManager._legendArea.refreshTime();
-		// }
 		if(this.graphManager.settings.xAxis.enabled){
 			this.graphManager._xAxis.redrawLabels(graphArea);
 		}
@@ -996,6 +920,11 @@ $.extend(LineGraph.prototype, {
 		}				
 	}
 });
+
+/**
+* Section with built in buttons for activating and clearing interval
+* To develop in new versions !
+*/
 function ControlPanel(graphManager){
 	this.graphManager = graphManager;
 	this.startStopButton = graphManager.svgManager.rect(graphManager.svgManager._width() - 40, 5,35 , graphManager.regionsSize.titleArea.height, {fill : 'red'}  );
@@ -1097,22 +1026,25 @@ Array.prototype.extend = function(values){
 Array.prototype.last = function() {
         return this[this.length - 1];
 }
+function log10(val) {
+  return Math.log(val) / Math.LN10;
+}
 /**
 * Array of color for series
 */
 var COLOR_ARRAY = [
 'DeepSkyBlue',
 '#2DC800',
-'PeachPuff4',
-'slateGray',
 'indianRed',
+'gold',
+'slateGray',
+'red',
 'limeGreen',
 '#999',
 'CornflowerBlue',
 'mediumAquamarine',
 'MidnightBlue',
 'darkKhaki',
-'gold',
 'peru',
 'mediumOrchid',
 'firebrick',

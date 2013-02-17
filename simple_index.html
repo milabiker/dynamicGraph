@@ -2,12 +2,14 @@
 <head>
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 	<script src="jquery-1.8.2.min.js"></script>
-	<script type="text/javascript" src="jquery.svg.package-1.4.5/jquery.svg.js"></script>
-	<script type="text/javascript" src="TestData.js"></script>
+	<script type="text/javascript" src="jquery.svg.min.js"></script>
+	<!-- ---- Simple data generator for demo -->
+	<script type="text/javascript" src="TestDataGenerator.js"></script>
 	<script type="text/javascript" src="dynamicGraph.js"></script>
-	<script type="text/javascript" src="libraryUse.js"></script>
+	<script type="text/javascript" src="libraryUseDemo.js"></script> 
 	<style type="text/css">
-		@import "jquery.svg.package-1.4.5/jquery.svg.css";
+		<!--
+		@import "jquery.svg.css";
 		#svgbasics { width: 400px; height: 300px; border: 1px solid #484; }
 		#graphArea{
 			/*fill:red;*/
@@ -20,22 +22,37 @@
 		}
 		rect.graphBackground{
 			/*fill : DeepSkyBlue;*/
+		} 
+		.clear, .activate, .clear1, .activate1 { 
+			background-color: DeepSkyBlue;
+			color: white;
+			border:none;
+			padding : 4px 7px;
+			margin: 5px;
 		}
-	</style>
+	</style> 
 </head>
 <body>
-	<div id="svgLineGraph" style="display:inline">
-	
+	<div id="simple" ></<div>
+	<div style="display:inline-block">
+		<div id="svgLineGraph" >
+
+		</div>
+		<div>
+			<button class="clear"> wyłącz odświeżanie </button>
+			<button class="activate"> włącz odświeżanie </button>
+		</div>
 	</div>
 
-	<div id="svg" style="display:inline">
+	<div style="display:inline-block">
+		<div id="svg" >
+		</div>
+		<div>
+			<button class="clear1"> clear update </button>
+			<button class="activate1"> activate update </button>
+		</div>
 	</div>
-	<div>
-	<button class="clear"> clear update </button>
-	<button class="activate"> activate update </button>
-	<button class="clear1"> clear update </button>
-	<button class="activate1"> activate update </button>
-	</div>
+
 	<div id="svgLineGraph2">
 	</div>	
 	<div id="svgLineGraph3">
